@@ -6,6 +6,7 @@ import { Building2, Eye, EyeOff } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { Link } from 'expo-router';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -81,11 +82,13 @@ export default function Login() {
               </Button>
 
               <View style={styles.forgotPasswordContainer}>
-                <TouchableOpacity>
-                  <Text style={styles.forgotPasswordText}>
-                    Esqueci minha senha
-                  </Text>
-                </TouchableOpacity>
+                <Link href="/forgot-password" asChild>
+                  <TouchableOpacity>
+                    <Text style={styles.forgotPasswordText}>
+                      Esqueci minha senha
+                    </Text>
+                  </TouchableOpacity>
+                </Link>
               </View>
             </CardContent>
           </Card>

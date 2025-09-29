@@ -72,32 +72,52 @@ export default function ReportsScreen() {
     const [activeTab, setActiveTab] = useState('Reservas');
     const [selectedPeriod, setSelectedPeriod] = useState('month');
 
-    // NOVA FUNÇÃO: Gera um HTML estilizado para o PDF
-    const generateReportHtml = () => {
+    // --- LÓGICA DE EXPORTAÇÃO COMPLETA ---
+
+    const generateReservationsHtml = () => {
+        let content = '<h2>Reservas por Área</h2><ul>';
+        reservationsData.labels.forEach((label, index) => {
+            content += `<li><strong>${label}:</strong> ${reservationsData.datasets[0].data[index]} reservas</li>`;
+        });
+        content += '</ul>';
+        return content;
+    };
+
+    const generateIssuesHtml = () => {
+        let content = '<h2>Distribuição de Ocorrências por Tipo</h2><ul>';
+        issuesDataPie.forEach(item => {
+            content += `<li><strong>${item.name}:</strong> ${item.population} ocorrências</li>`;
+        });
+        content += '</ul>';
+        return content;
+    };
+
+    const generateFinancialHtml = () => {
+        let content = '<h2>Resumo Financeiro</h2><ul>';
+        content += `<li><strong>Receita Total:</strong> R$ ${financialSummary.totalRevenue.toLocaleString('pt-BR')}</li>`;
+        content += `<li><strong>Despesas (Manutenção):</strong> R$ ${financialSummary.maintenance.toLocaleString('pt-BR')}</li>`;
+        const totalDespesas = financialSummary.maintenance + financialSummary.security + financialSummary.cleaning + financialSummary.other;
+        const saldo = financialSummary.totalRevenue - totalDespesas;
+        content += `<li><strong>Saldo:</strong> R$ ${saldo.toLocaleString('pt-BR')}</li>`;
+        content += '</ul>';
+        return content;
+    };
+    
+    const generateReportHtml = (reportType: 'current' | 'all') => {
         const period = selectedPeriod === 'month' ? 'Este Mês' : 'Este Ano';
         const date = new Date().toLocaleDateString('pt-BR');
         let reportContent = '';
+        let title = `Relatório de ${activeTab}`;
 
-        if (activeTab === 'Reservas') {
-            reportContent += '<h2>Reservas por Área</h2><ul>';
-            reservationsData.labels.forEach((label, index) => {
-                reportContent += `<li><strong>${label}:</strong> ${reservationsData.datasets[0].data[index]} reservas</li>`;
-            });
-            reportContent += '</ul>';
-        } else if (activeTab === 'Ocorrências') {
-            reportContent += '<h2>Distribuição por Tipo</h2><ul>';
-            issuesDataPie.forEach(item => {
-                reportContent += `<li><strong>${item.name}:</strong> ${item.population} ocorrências</li>`;
-            });
-            reportContent += '</ul>';
-        } else if (activeTab === 'Financeiro') {
-            reportContent += '<h2>Resumo Financeiro</h2><ul>';
-            reportContent += `<li><strong>Receita Total:</strong> R$ ${financialSummary.totalRevenue.toLocaleString('pt-BR')}</li>`;
-            reportContent += `<li><strong>Despesas (Manutenção):</strong> R$ ${financialSummary.maintenance.toLocaleString('pt-BR')}</li>`;
-            const totalDespesas = financialSummary.maintenance + financialSummary.security + financialSummary.cleaning + financialSummary.other;
-            const saldo = financialSummary.totalRevenue - totalDespesas;
-            reportContent += `<li><strong>Saldo:</strong> R$ ${saldo.toLocaleString('pt-BR')}</li>`;
-            reportContent += '</ul>';
+        if (reportType === 'all') {
+            title = 'Relatório Geral do Condomínio';
+            reportContent += generateReservationsHtml();
+            reportContent += generateIssuesHtml();
+            reportContent += generateFinancialHtml();
+        } else {
+            if (activeTab === 'Reservas') reportContent = generateReservationsHtml();
+            if (activeTab === 'Ocorrências') reportContent = generateIssuesHtml();
+            if (activeTab === 'Financeiro') reportContent = generateFinancialHtml();
         }
 
         return `
@@ -105,16 +125,16 @@ export default function ReportsScreen() {
                 <head>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
                     <style>
-                        body { font-family: sans-serif; padding: 20px; }
+                        body { font-family: sans-serif; padding: 20px; color: #374151; }
                         h1 { color: #1e3a8a; }
-                        h2 { color: #374151; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+                        h2 { color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-top: 25px; }
                         ul { list-style: none; padding-left: 0; }
-                        li { background-color: #f9fafb; padding: 8px; border-radius: 4px; margin-bottom: 5px; }
-                        strong { color: #111827; }
+                        li { background-color: #f9fafb; padding: 10px; border-radius: 6px; margin-bottom: 6px; border: 1px solid #f3f4f6; }
+                        strong { color: #1f2937; }
                     </style>
                 </head>
                 <body>
-                    <h1>Relatório de ${activeTab}</h1>
+                    <h1>${title}</h1>
                     <p><strong>Período:</strong> ${period}</p>
                     <p><strong>Gerado em:</strong> ${date}</p>
                     ${reportContent}
@@ -123,10 +143,9 @@ export default function ReportsScreen() {
         `;
     };
     
-    // NOVA FUNÇÃO: Gera o PDF e o compartilha
-    const exportAsPdf = async () => {
+    const exportAsPdf = async (reportType: 'current' | 'all') => {
         try {
-            const htmlContent = generateReportHtml();
+            const htmlContent = generateReportHtml(reportType);
             const { uri } = await Print.printToFileAsync({ html: htmlContent });
             await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Compartilhar Relatório' });
         } catch (error) {
@@ -135,13 +154,13 @@ export default function ReportsScreen() {
         }
     };
     
-    // ATUALIZADO: A lógica de exportação agora está completa
     const handleExportReport = () => {
         Alert.alert(
             'Exportar Relatório',
-            `Escolha o formato para exportar o relatório de ${activeTab}:`,
+            `Escolha uma opção:`,
             [
-                { text: 'Gerar PDF', onPress: exportAsPdf },
+                { text: `Gerar PDF da Aba "${activeTab}"`, onPress: () => exportAsPdf('current') },
+                { text: 'Gerar Relatório Completo (PDF)', onPress: () => exportAsPdf('all') },
                 { text: 'Cancelar', style: 'cancel' },
             ]
         );
