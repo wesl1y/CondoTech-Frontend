@@ -69,6 +69,27 @@ export default function DashboardScreen() {
           )}
         </View>
 
+        {/* Admin-only Quick Actions */}
+        {isAdmin && (
+          <Card style={styles.sectionCard}>
+            <CardHeader style={styles.cardHeader}>
+              <View style={styles.cardHeaderContent}>
+                <BarChart3 size={22} color="#2563eb" />
+                <CardTitle style={styles.cardTitle}>Ações Rápidas</CardTitle>
+              </View>
+            </CardHeader>
+            <CardContent style={styles.quickActionsContent}>
+              <Button variant="outline" style={styles.quickActionButton}>
+                <Users size={22} color="#4b5563" style={styles.actionIcon} />
+                <Text style={styles.quickActionText}>Gerenciar Moradores</Text>
+              </Button>
+              <Button variant="outline" style={styles.quickActionButton}>
+                <BarChart3 size={22} color="#4b5563" style={styles.actionIcon} />
+                <Text style={styles.quickActionText}>Ver Relatórios</Text>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
         {/* Recent Notifications */}
         <Card style={styles.sectionCard}>
           <CardHeader style={styles.cardHeader}>
@@ -98,27 +119,6 @@ export default function DashboardScreen() {
         <ReservationsList />
         <IssuesList />
 
-        {/* Admin-only Quick Actions */}
-        {isAdmin && (
-          <Card style={styles.sectionCard}>
-            <CardHeader style={styles.cardHeader}>
-              <View style={styles.cardHeaderContent}>
-                <BarChart3 size={22} color="#2563eb" />
-                <CardTitle style={styles.cardTitle}>Ações Rápidas</CardTitle>
-              </View>
-            </CardHeader>
-            <CardContent style={styles.quickActionsContent}>
-              <Button variant="outline" style={styles.quickActionButton}>
-                <Users size={22} color="#4b5563" style={styles.actionIcon} />
-                <Text style={styles.quickActionText}>Gerenciar Moradores</Text>
-              </Button>
-              <Button variant="outline" style={styles.quickActionButton}>
-                <BarChart3 size={22} color="#4b5563" style={styles.actionIcon} />
-                <Text style={styles.quickActionText}>Ver Relatórios</Text>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
       </ScrollView>
     </SafeAreaView>
