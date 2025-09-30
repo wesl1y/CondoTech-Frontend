@@ -1,90 +1,117 @@
-// Location: context/AuthContext.tsx (UPDATED)
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { jwtDecode } from 'jwt-decode';
+import { API_URL } from '../constants/api';
+import api from '../services/api';
 
-// Define the full user object type
+// --- INTERFACES ATUALIZADAS ---
+
+// Nova interface para representar um veículo
+interface Vehicle {
+  id: number;
+  placa: string;
+  marca: string;
+  modelo: string;
+  cor: string;
+}
+
+// Interface do Token JWT
+interface DecodedToken {
+  sub: string;
+  id: string;
+  role: 'ADMIN' | 'USER';
+  exp: number;
+}
+
+// Interface User atualizada para corresponder ao DTO do back-end
 interface User {
-  email: string;
+  id: string;
+  login: string;
   name: string;
-  userType: 'admin' | 'resident';
-  // New details for the profile screen
+  email: string;
+  role: 'ADMIN' | 'USER';
   phone: string;
   unit: string;
   tower: string;
-  role: string;
-  vehicles: string[];
+  vehicles: Vehicle[]; // <-- AGORA É UMA LISTA DE OBJETOS 'Vehicle'
   avatar: string;
 }
 
 interface AuthContextData {
-  signIn: (email: string) => void;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
   user: User | null;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
-
-// Update mock users with more details
-const MOCK_USERS: { [key: string]: User } = {
-  'sindico@demo.com': { 
-    email: 'sindico@demo.com', 
-    name: 'Maria Silva', 
-    userType: 'admin',
-    phone: '(11) 99999-1234',
-    unit: 'Apt 302',
-    tower: 'Torre A',
-    role: 'Síndico',
-    vehicles: ['ABC-1234', 'XYZ-5678'],
-    avatar: 'MS'
-  },
-  'maria@demo.com': { 
-    email: 'maria@demo.com', 
-    name: 'Maria Silva', 
-    userType: 'resident',
-    phone: '(11) 99999-1234',
-    unit: 'Apt 302',
-    tower: 'Torre A',
-    role: 'Morador',
-    vehicles: ['ABC-1234', 'XYZ-5678'],
-    avatar: 'MS'
-  },
-  'joao@demo.com': { 
-    email: 'joao@demo.com', 
-    name: 'João Santos', 
-    userType: 'resident',
-    phone: '(11) 97777-4321',
-    unit: 'Apt 105',
-    tower: 'Torre A',
-    role: 'Morador',
-    vehicles: ['DEF-9876'],
-    avatar: 'JS'
-  },
-};
+const TOKEN_KEY = 'my-jwt';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // O resto da lógica (useEffect, signIn, signOut) permanece o mesmo
   useEffect(() => {
-    setUser(null);
-    setIsLoading(false);
+    const loadUserFromToken = async () => {
+      try {
+        const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        if (token) {
+          const decodedToken: DecodedToken = jwtDecode(token);
+          const userData = await api.get(`/users/${decodedToken.id}`);
+          setUser(userData);
+        }
+      } catch (e) {
+        console.error('Failed to load user session:', e);
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadUserFromToken();
   }, []);
 
-  const signIn = (email: string) => {
-    const foundUser = MOCK_USERS[email.toLowerCase()];
-    if (foundUser) {
-      setUser(foundUser);
+  const signIn = async (email: string, password: string) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: email, password: password }),
+      });
+
+      if (!response.ok) throw new Error('E-mail ou senha inválidos');
+      const { token } = await response.json();
+      if (!token) throw new Error('Token não recebido do servidor');
+      
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+
+      const decodedToken: DecodedToken = jwtDecode(token);
+      const userData = await api.get(`/users/${decodedToken.id}`);
+      setUser(userData);
+      
       router.replace('/(app)/(tabs)/dashboard');
-    } else {
-      alert('Usuário não encontrado.');
+
+    } catch (error) {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      let errorMessage = 'Ocorreu um erro desconhecido.';
+      if (error instanceof Error) errorMessage = error.message;
+      console.error('Login failed:', error);
+      alert(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
-  const signOut = () => {
-    setUser(null);
-    router.replace('/(auth)/login');
+  const signOut = async () => {
+    try {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+    } catch (e) {
+      console.error('Failed to delete token:', e);
+    } finally {
+      setUser(null);
+      router.replace('/(auth)/login');
+    }
   };
 
   return (

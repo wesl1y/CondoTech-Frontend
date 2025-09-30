@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronRight, Clock } from 'lucide-react-native';
+import { CheckCircle2, ChevronRight, Clock, Wrench, Users, Shield, DollarSign, Info } from 'lucide-react-native';
 import React from 'react';
 import { FlatList, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge } from '../../../components/ui/badge';
@@ -75,7 +75,6 @@ export default function NotificationsScreen() {
     const [filter, setFilter] = React.useState<string>('Todas');
     const [selectedNotification, setSelectedNotification] = React.useState<Notification | null>(null);
     
-    // Usamos useMemo para otimizar a filtragem, evitando re-cálculos desnecessários
     const filteredNotifications = React.useMemo(() => {
         if (filter === 'Não lidas') {
             return notificationsData.filter(n => n.unread);
@@ -92,16 +91,24 @@ export default function NotificationsScreen() {
         <SafeAreaView style={styles.safeArea}>
             {/* Header */}
             <View style={styles.header}>
-                <View>
+                <View style={styles.headerTextContainer}>
                     <Text style={styles.headerTitle}>Notificações</Text>
                     <Text style={styles.headerSubtitle}>Acompanhe as novidades do condomínio</Text>
                 </View>
-                {unreadCount > 0 && <Badge variant="secondary">{unreadCount} novas</Badge>}
+                {unreadCount > 0 && (
+                    <Badge variant="secondary" style={styles.unreadBadge}>
+                        {unreadCount} novas
+                    </Badge>
+                )}
             </View>
             
             {/* Filtros */}
-            <View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+            <View style={styles.filterSection}>
+                <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false} 
+                    contentContainerStyle={styles.filterContainer}
+                >
                     <FilterButton title="Todas" isActive={filter === 'Todas'} onPress={() => setFilter('Todas')} />
                     <FilterButton title="Não lidas" isActive={filter === 'Não lidas'} onPress={() => setFilter('Não lidas')} />
                     <FilterButton title="Importantes" isActive={filter === 'Importantes'} onPress={() => setFilter('Importantes')} />
@@ -112,8 +119,15 @@ export default function NotificationsScreen() {
             <FlatList
                 data={filteredNotifications}
                 keyExtractor={item => item.id.toString()}
-                renderItem={({ item }: { item: Notification }) => <NotificationCard notification={item} onPress={() => setSelectedNotification(item)} />}
+                renderItem={({ item }: { item: Notification }) => (
+                    <NotificationCard notification={item} onPress={() => setSelectedNotification(item)} />
+                )}
                 contentContainerStyle={styles.list}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Nenhuma notificação encontrada</Text>
+                    </View>
+                }
             />
 
             {/* Modal de Detalhes */}
@@ -128,20 +142,23 @@ export default function NotificationsScreen() {
     );
 }
 
-// --- SUB-COMPONENTES PARA CLAREZA ---
+// --- SUB-COMPONENTES ---
 
 type FilterButtonProps = {
     title: string;
     isActive: boolean;
     onPress: () => void;
 };
+
 const FilterButton = ({ title, isActive, onPress }: FilterButtonProps) => (
     <Button 
         variant={isActive ? 'default' : 'outline'}
         onPress={onPress}
-        style={{ paddingHorizontal: 16, paddingVertical: 8, height: 'auto' }}
+        style={styles.filterButton}
     >
-        <Text style={{ fontWeight: '600', color: isActive ? 'white' : '#374151' }}>{title}</Text>
+        <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
+            {title}
+        </Text>
     </Button>
 );
 
@@ -149,20 +166,24 @@ type NotificationCardProps = {
     notification: Notification;
     onPress: () => void;
 };
+
 const NotificationCard = ({ notification, onPress }: NotificationCardProps) => {
     const getPriorityColor = (priority: Notification['priority']): string => {
         if (priority === 'high') return '#ef4444';
         if (priority === 'medium') return '#f59e0b';
         return '#22c55e';
     };
-    const typeIcons: Record<Notification['type'], string> = {
-        maintenance: '🔧',
-        meeting: '📋',
-        security: '🛡️',
-        billing: '💰',
-        info: 'ℹ️',
+    
+    const typeIcons: Record<Notification['type'], React.ReactElement> = {
+        maintenance: <Wrench size={20} color="#2563eb" />,
+        meeting: <Users size={20} color="#2563eb" />,
+        security: <Shield size={20} color="#2563eb" />,
+        billing: <DollarSign size={20} color="#2563eb" />,
+        info: <Info size={20} color="#2563eb" />,
     };
-    const getTypeIcon = (type: Notification['type']): string => typeIcons[type];
+    
+    const getTypeIcon = (type: Notification['type']): React.ReactElement => typeIcons[type];
+    
     const typeNames: Record<Notification['type'], string> = {
         maintenance: 'Manutenção',
         meeting: 'Assembleia',
@@ -170,26 +191,44 @@ const NotificationCard = ({ notification, onPress }: NotificationCardProps) => {
         billing: 'Financeiro',
         info: 'Informativo',
     };
+    
     const getTypeName = (type: Notification['type']): string => typeNames[type];
 
     return (
-        <TouchableOpacity onPress={onPress}>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
             <Card style={[
                 styles.notificationCard, 
                 { borderLeftColor: getPriorityColor(notification.priority) },
-                notification.unread && { backgroundColor: '#eff6ff' }
+                notification.unread && styles.unreadCard
             ]}>
                 <CardContent style={styles.cardContent}>
-                    <Text style={{ fontSize: 24, marginRight: 12 }}>{getTypeIcon(notification.type)}</Text>
-                    <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={[styles.cardTitle, notification.unread && { color: '#1e3a8a' }]} numberOfLines={1}>{notification.title}</Text>
-                            <ChevronRight size={20} color="#9ca3af" />
+                    <View style={styles.iconContainer}>
+                        {getTypeIcon(notification.type)}
+                    </View>
+                    <View style={styles.cardBody}>
+                        <View style={styles.cardHeader}>
+                            <Text 
+                                style={[
+                                    styles.cardTitle, 
+                                    notification.unread && styles.cardTitleUnread
+                                ]} 
+                                numberOfLines={1}
+                            >
+                                {notification.title}
+                            </Text>
+                            <ChevronRight size={20} color="#9ca3af" style={styles.chevron} />
                         </View>
-                        <Text style={styles.cardDescription} numberOfLines={2}>{notification.description}</Text>
+                        <Text style={styles.cardDescription} numberOfLines={2}>
+                            {notification.description}
+                        </Text>
                         <View style={styles.cardFooter}>
-                            <Text style={styles.cardMeta}><Clock size={12} color="#6b7280"/> {notification.date}</Text>
-                            <Badge variant='outline'>{getTypeName(notification.type)}</Badge>
+                            <View style={styles.dateContainer}>
+                                <Clock size={14} color="#6b7280" />
+                                <Text style={styles.cardDate}>{notification.date}</Text>
+                            </View>
+                            <Badge variant='outline' style={styles.typeBadge}>
+                                {getTypeName(notification.type)}
+                            </Badge>
                         </View>
                     </View>
                 </CardContent>
@@ -203,8 +242,8 @@ type NotificationDetailModalProps = {
     visible: boolean;
     onClose: () => void;
 };
+
 const NotificationDetailModal = ({ notification, visible, onClose }: NotificationDetailModalProps) => {
-    // Aqui viria a lógica para marcar como lido
     const handleMarkAsRead = () => {
         console.log(`Marcando notificação ${notification.id} como lida.`);
         onClose();
@@ -215,12 +254,19 @@ const NotificationDetailModal = ({ notification, visible, onClose }: Notificatio
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{notification.title}</DialogTitle>
-                    <DialogDescription>{new Date(notification.date).toLocaleDateString('pt-BR', { dateStyle: 'full' })}</DialogDescription>
+                    <DialogDescription>
+                        {new Date(notification.date).toLocaleDateString('pt-BR', { dateStyle: 'full' })}
+                    </DialogDescription>
                 </DialogHeader>
-                <Text style={styles.modalDescription}>{notification.description}</Text>
+                
+                <ScrollView style={styles.modalScrollView}>
+                    <Text style={styles.modalDescription}>{notification.description}</Text>
+                </ScrollView>
+                
                 {notification.unread && (
-                    <Button onPress={handleMarkAsRead} style={{ marginTop: 16 }}>
-                        <CheckCircle2 size={16} color="white" /> Marcar como lida
+                    <Button onPress={handleMarkAsRead} style={styles.markReadButton}>
+                        <CheckCircle2 size={18} color="white" style={styles.buttonIcon} />
+                        <Text style={styles.markReadButtonText}>Marcar como lida</Text>
                     </Button>
                 )}
             </DialogContent>
@@ -228,25 +274,193 @@ const NotificationDetailModal = ({ notification, visible, onClose }: Notificatio
     );
 };
 
-
 // --- ESTILOS ---
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: 'white' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-    headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1e3a8a' },
-    headerSubtitle: { fontSize: 16, color: '#6b7280' },
-    filterContainer: { paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
-    list: { paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
+    safeArea: { 
+        flex: 1, 
+        backgroundColor: '#f3f4f6' 
+    },
     
-    // Estilos do Card
-    notificationCard: { borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 4 },
-    cardContent: { padding: 12, flexDirection: 'row', alignItems: 'center' },
-    cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#111827', marginBottom: 4 },
-    cardDescription: { fontSize: 14, color: '#4b5563', lineHeight: 20 },
-    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
-    cardMeta: { fontSize: 12, color: '#6b7280', flexDirection: 'row', alignItems: 'center' },
+    // Header
+    header: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: 20,
+        paddingBottom: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    headerTextContainer: {
+        flex: 1,
+    },
+    headerTitle: { 
+        fontSize: 32, 
+        fontWeight: 'bold', 
+        color: '#1e3a8a',
+        marginBottom: 4,
+        lineHeight: 38,
+    },
+    headerSubtitle: { 
+        fontSize: 16, 
+        color: '#6b7280',
+        lineHeight: 22,
+    },
+    unreadBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+    
+    // Filtros
+    filterSection: {
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    filterContainer: { 
+        paddingHorizontal: 20, 
+        paddingVertical: 16,
+        gap: 10,
+    },
+    filterButton: {
+        paddingHorizontal: 20, 
+        paddingVertical: 10,
+        height: 'auto',
+    },
+    filterButtonText: {
+        fontWeight: '600',
+        color: '#374151',
+        fontSize: 15,
+    },
+    filterButtonTextActive: {
+        color: 'white',
+    },
+    
+    // Lista
+    list: { 
+        padding: 20,
+        paddingBottom: 32,
+    },
+    emptyContainer: {
+        paddingVertical: 60,
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: 16,
+        color: '#9ca3af',
+        fontWeight: '500',
+    },
+    
+    // Card de Notificação
+    notificationCard: { 
+        borderWidth: 1, 
+        borderColor: '#e5e7eb', 
+        borderLeftWidth: 4,
+        marginBottom: 16,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        backgroundColor: '#fff',
+    },
+    unreadCard: {
+        backgroundColor: '#eff6ff',
+        borderColor: '#bfdbfe',
+    },
+    cardContent: { 
+        padding: 16, 
+        flexDirection: 'row', 
+        alignItems: 'flex-start',
+        gap: 14,
+    },
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f3f4f6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    typeEmoji: {
+        fontSize: 20,
+    },
+    cardBody: {
+        flex: 1,
+        gap: 8,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: 12,
+    },
+    cardTitle: { 
+        fontSize: 17, 
+        fontWeight: '600', 
+        color: '#111827',
+        flex: 1,
+        lineHeight: 22,
+    },
+    cardTitleUnread: {
+        color: '#1e40af',
+        fontWeight: '700',
+    },
+    chevron: {
+        marginTop: 2,
+    },
+    cardDescription: { 
+        fontSize: 15, 
+        color: '#4b5563', 
+        lineHeight: 21,
+    },
+    cardFooter: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginTop: 4,
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    dateContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    cardDate: { 
+        fontSize: 13, 
+        color: '#6b7280',
+        fontWeight: '500',
+    },
+    typeBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
 
-    // Estilos do Modal
-    modalDescription: { fontSize: 16, color: '#374151', lineHeight: 24 }
+    // Modal
+    modalScrollView: {
+        marginVertical: 20,
+    },
+    modalDescription: { 
+        fontSize: 16, 
+        color: '#374151', 
+        lineHeight: 24,
+    },
+    markReadButton: {
+        marginTop: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 12,
+    },
+    buttonIcon: {
+        marginRight: 2,
+    },
+    markReadButtonText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 15,
+    },
 });

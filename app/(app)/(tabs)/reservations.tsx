@@ -1,7 +1,7 @@
 // Location: app/(app)/(tabs)/reservations.tsx
 
 import { Picker } from '@react-native-picker/picker';
-import { Calendar as CalendarIcon, Clock, MapPin, Plus, X } from 'lucide-react-native';
+import { Calendar as CalendarIcon, Clock, MapPin, Plus, X, Home, Flame, Waves } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { FlatList, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -20,10 +20,46 @@ LocaleConfig.locales['pt-br'] = {
 };
 LocaleConfig.defaultLocale = 'pt-br';
 
-// --- MOCK DATA (same as your original code) ---
-const areas = [ { id: 1, name: 'Salão de Festas', description: 'Capacidade para 50 pessoas, som ambiente, cozinha completa', image: '🎉', price: 'R$ 150,00', available: true, rules: ['Máximo 50 pessoas', 'Término até 23h', 'Limpeza obrigatória'] }, { id: 2, name: 'Churrasqueira', description: 'Área gourmet com churrasqueira, mesas e bancos', image: '🍖', price: 'R$ 80,00', available: true, rules: ['Máximo 20 pessoas', 'Término até 22h', 'Limpeza obrigatória'] }, { id: 3, name: 'Piscina', description: 'Piscina adulto e infantil, área de descanso', image: '🏊', price: 'Gratuito', available: false, rules: ['Máximo 15 pessoas', 'Apenas finais de semana', 'Responsável maior de idade'] }, ];
-const myReservations = [ { id: 1, area: 'Salão de Festas', date: '2025-09-22', time: '19:00', status: 'confirmed', guests: 35 }, { id: 2, area: 'Churrasqueira', date: '2025-09-25', time: '12:00', status: 'pending', guests: 15 }, ];
-const timeSlots = [ '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00' ];
+// --- MOCK DATA ---
+const areas = [
+    { 
+        id: 1, 
+        name: 'Salão de Festas', 
+        description: 'Capacidade para 50 pessoas, som ambiente, cozinha completa', 
+        icon: 'party', 
+        price: 'R$ 150,00', 
+        available: true, 
+        rules: ['Máximo 50 pessoas', 'Término até 23h', 'Limpeza obrigatória'] 
+    },
+    { 
+        id: 2, 
+        name: 'Churrasqueira', 
+        description: 'Área gourmet com churrasqueira, mesas e bancos', 
+        icon: 'grill', 
+        price: 'R$ 80,00', 
+        available: true, 
+        rules: ['Máximo 20 pessoas', 'Término até 22h', 'Limpeza obrigatória'] 
+    },
+    { 
+        id: 3, 
+        name: 'Piscina', 
+        description: 'Piscina adulto e infantil, área de descanso', 
+        icon: 'pool', 
+        price: 'Gratuito', 
+        available: false, 
+        rules: ['Máximo 15 pessoas', 'Apenas finais de semana', 'Responsável maior de idade'] 
+    },
+];
+
+const myReservations = [
+    { id: 1, area: 'Salão de Festas', date: '2025-09-22', time: '19:00', status: 'confirmed', guests: 35 },
+    { id: 2, area: 'Churrasqueira', date: '2025-09-25', time: '12:00', status: 'pending', guests: 15 },
+];
+
+const timeSlots = [
+    '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', 
+    '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'
+];
 
 export default function ReservationsScreen() {
     const [activeTab, setActiveTab] = useState('Áreas Disponíveis');
@@ -38,13 +74,23 @@ export default function ReservationsScreen() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Reservas</Text>
-                <Text style={styles.headerSubtitle}>Gerencie suas reservas de áreas comuns</Text>
+                <View>
+                    <Text style={styles.headerTitle}>Reservas</Text>
+                    <Text style={styles.headerSubtitle}>Gerencie suas reservas de áreas comuns</Text>
+                </View>
             </View>
 
             <View style={styles.tabsContainer}>
-                <TabButton title="Áreas Disponíveis" isActive={activeTab === 'Áreas Disponíveis'} onPress={() => setActiveTab('Áreas Disponíveis')} />
-                <TabButton title="Minhas Reservas" isActive={activeTab === 'Minhas Reservas'} onPress={() => setActiveTab('Minhas Reservas')} />
+                <TabButton 
+                    title="Áreas Disponíveis" 
+                    isActive={activeTab === 'Áreas Disponíveis'} 
+                    onPress={() => setActiveTab('Áreas Disponíveis')} 
+                />
+                <TabButton 
+                    title="Minhas Reservas" 
+                    isActive={activeTab === 'Minhas Reservas'} 
+                    onPress={() => setActiveTab('Minhas Reservas')} 
+                />
             </View>
 
             {activeTab === 'Áreas Disponíveis' && (
@@ -76,13 +122,14 @@ export default function ReservationsScreen() {
     );
 }
 
-// --- SUB-COMPONENTS for clarity ---
+// --- SUB-COMPONENTS ---
 
 interface TabButtonProps {
     title: string;
     isActive: boolean;
     onPress: () => void;
 }
+
 const TabButton = ({ title, isActive, onPress }: TabButtonProps) => (
     <TouchableOpacity style={[styles.tab, isActive && styles.activeTab]} onPress={onPress}>
         <Text style={[styles.tabText, isActive && styles.activeTabText]}>{title}</Text>
@@ -93,38 +140,66 @@ interface Area {
     id: number;
     name: string;
     description: string;
-    image: string;
+    icon: string;
     price: string;
     available: boolean;
     rules: string[];
 }
+
 interface AreaCardProps {
     area: Area;
     onReserve: () => void;
 }
-const AreaCard = ({ area, onReserve }: AreaCardProps) => (
-    <Card style={!area.available && { opacity: 0.6 }}>
-        <CardContent style={styles.cardContent}>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-                <Text style={{ fontSize: 40 }}>{area.image}</Text>
-                <View style={{ flex: 1, gap: 8 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <Text style={styles.cardTitle}>{area.name}</Text>
-                        <Text style={styles.price}>{area.price}</Text>
+
+const AreaCard = ({ area, onReserve }: AreaCardProps) => {
+    const getAreaIcon = (iconType: string) => {
+        switch (iconType) {
+            case 'party': return <Home size={28} color="#2563eb" />;
+            case 'grill': return <Flame size={28} color="#2563eb" />;
+            case 'pool': return <Waves size={28} color="#2563eb" />;
+            default: return <Home size={28} color="#2563eb" />;
+        }
+    };
+
+    return (
+        <Card style={[styles.areaCard, !area.available && styles.unavailableCard]}>
+            <CardContent style={styles.areaCardContent}>
+                <View style={styles.areaCardLayout}>
+                    <View style={styles.iconContainer}>
+                        {getAreaIcon(area.icon)}
                     </View>
-                    <Text style={styles.description}>{area.description}</Text>
-                    <View style={styles.rulesContainer}>
-                        {area.rules.map((rule: string, index: number) => <Badge key={index} variant="outline">{rule}</Badge>)}
+                    <View style={styles.areaCardBody}>
+                        <View style={styles.areaCardHeader}>
+                            <Text style={styles.areaTitle}>{area.name}</Text>
+                            <Text style={styles.areaPrice}>{area.price}</Text>
+                        </View>
+                        <Text style={styles.areaDescription}>{area.description}</Text>
+                        {!area.available && (
+                            <Badge variant="danger" style={styles.unavailableBadge}>
+                                Indisponível
+                            </Badge>
+                        )}
+                        <View style={styles.rulesContainer}>
+                            {area.rules.map((rule: string, index: number) => (
+                                <Badge key={index} variant="outline" style={styles.ruleBadge}>
+                                    {rule}
+                                </Badge>
+                            ))}
+                        </View>
+                        <Button 
+                            disabled={!area.available} 
+                            onPress={onReserve}
+                            style={styles.reserveButton}
+                        >
+                            <Plus size={18} color="white" style={styles.buttonIcon} />
+                            <Text style={styles.reserveButtonText}>Reservar</Text>
+                        </Button>
                     </View>
-                    <Button disabled={!area.available} onPress={onReserve}>
-                        <Plus size={16} color="white" />
-                        Reservar
-                    </Button>
                 </View>
-            </View>
-        </CardContent>
-    </Card>
-);
+            </CardContent>
+        </Card>
+    );
+};
 
 interface Reservation {
     id: number;
@@ -134,32 +209,49 @@ interface Reservation {
     status: string;
     guests: number;
 }
+
 interface MyReservationCardProps {
     reservation: Reservation;
 }
+
 const MyReservationCard = ({ reservation }: MyReservationCardProps) => {
-        const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', weekday: 'long' });
-        const getStatusVariant = (status: string) => status === 'confirmed' ? 'success' : 'warning';
+    const formatDate = (dateStr: string) => {
+        return new Date(dateStr).toLocaleDateString('pt-BR', { 
+            day: '2-digit', 
+            month: 'long', 
+            weekday: 'long' 
+        });
+    };
+    
+    const getStatusVariant = (status: string) => status === 'confirmed' ? 'success' : 'warning';
 
     return (
-        <Card>
-            <CardContent style={styles.cardContent}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <View style={{ gap: 8 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <MapPin size={16} color="#2563eb" />
-                            <Text style={styles.cardTitle}>{reservation.area}</Text>
+        <Card style={styles.reservationCard}>
+            <CardContent style={styles.reservationCardContent}>
+                <View style={styles.reservationHeader}>
+                    <View style={styles.reservationInfo}>
+                        <View style={styles.reservationTitleRow}>
+                            <MapPin size={18} color="#2563eb" />
+                            <Text style={styles.reservationTitle}>{reservation.area}</Text>
                         </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><CalendarIcon size={14} color="#4b5563" /><Text style={styles.metaText}>{formatDate(reservation.date)}</Text></View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Clock size={14} color="#4b5563" /><Text style={styles.metaText}>{reservation.time}</Text></View>
+                        <View style={styles.reservationMetaContainer}>
+                            <View style={styles.metaItem}>
+                                <CalendarIcon size={16} color="#6b7280" />
+                                <Text style={styles.metaText}>{formatDate(reservation.date)}</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Clock size={16} color="#6b7280" />
+                                <Text style={styles.metaText}>{reservation.time}</Text>
+                            </View>
                         </View>
                     </View>
-                    <View style={{ alignItems: 'flex-end', gap: 8 }}>
-                        <Badge variant={getStatusVariant(reservation.status)}>{reservation.status === 'confirmed' ? 'Confirmada' : 'Pendente'}</Badge>
-                        <Button variant="outline" style={{ paddingVertical: 6, borderColor: '#fecaca', borderWidth: 1 }}>
-                            <X size={14} color="#dc2626" />
-                            <Text style={{ color: '#dc2626', fontSize: 12 }}>Cancelar</Text>
+                    <View style={styles.reservationActions}>
+                        <Badge variant={getStatusVariant(reservation.status)} style={styles.statusBadge}>
+                            {reservation.status === 'confirmed' ? 'Confirmada' : 'Pendente'}
+                        </Badge>
+                        <Button variant="outline" style={styles.cancelButton}>
+                            <X size={16} color="#dc2626" style={styles.cancelIcon} />
+                            <Text style={styles.cancelButtonText}>Cancelar</Text>
                         </Button>
                     </View>
                 </View>
@@ -173,17 +265,17 @@ interface BookingModalProps {
     onClose: () => void;
     area: Area;
 }
+
 const BookingModal = ({ visible, onClose, area }: BookingModalProps) => {
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState(timeSlots[0]);
 
     const today = new Date().toISOString().split('T')[0];
     
-    // useMemo to create the markedDates object
     const markedDates = useMemo(() => {
         if (!selectedDate) return {};
         return {
-            [selectedDate]: { selected: true, selectedColor: '#2563eb', disableTouchEvent: true }
+            [selectedDate]: { selected: true, selectedColor: '#3b82f6', disableTouchEvent: true }
         };
     }, [selectedDate]);
 
@@ -193,30 +285,53 @@ const BookingModal = ({ visible, onClose, area }: BookingModalProps) => {
                 <DialogHeader>
                     <DialogTitle>Reservar {area.name}</DialogTitle>
                 </DialogHeader>
-                <ScrollView>
-                    <Text style={styles.label}>1. Selecione a data</Text>
-                    <Card>
+                <ScrollView style={styles.modalScrollView}>
+                    <Text style={styles.modalLabel}>1. Selecione a data</Text>
+                    <Card style={styles.calendarCard}>
                         <Calendar
                             onDayPress={day => setSelectedDate(day.dateString)}
                             markedDates={markedDates}
                             minDate={today}
+                            theme={{
+                                todayTextColor: '#3b82f6',
+                                selectedDayBackgroundColor: '#3b82f6',
+                                selectedDayTextColor: '#ffffff',
+                                arrowColor: '#3b82f6',
+                            }}
                         />
                     </Card>
 
                     {selectedDate && (
                         <>
-                            <Text style={styles.label}>2. Selecione o horário</Text>
+                            <Text style={styles.modalLabel}>2. Selecione o horário</Text>
                             <View style={styles.pickerContainer}>
-                                <Picker selectedValue={selectedTime} onValueChange={itemValue => setSelectedTime(itemValue)}>
-                                    {timeSlots.map(time => <Picker.Item key={time} label={time} value={time} />)}
+                                <Picker 
+                                    selectedValue={selectedTime} 
+                                    onValueChange={itemValue => setSelectedTime(itemValue)}
+                                >
+                                    {timeSlots.map(time => (
+                                        <Picker.Item key={time} label={time} value={time} />
+                                    ))}
                                 </Picker>
                             </View>
                         </>
                     )}
                     
                     <View style={styles.modalActions}>
-                        <Button variant="outline" onPress={onClose} style={{ flex: 1 }}>Cancelar</Button>
-                        <Button onPress={onClose} style={{ flex: 1 }} disabled={!selectedDate || !selectedTime}>Confirmar</Button>
+                        <Button 
+                            variant="outline" 
+                            onPress={onClose} 
+                            style={styles.modalButton}
+                        >
+                            <Text style={styles.cancelModalText}>Cancelar</Text>
+                        </Button>
+                        <Button 
+                            onPress={onClose} 
+                            style={styles.modalButton}
+                            disabled={!selectedDate || !selectedTime}
+                        >
+                            <Text style={styles.confirmButtonText}>Confirmar</Text>
+                        </Button>
                     </View>
                 </ScrollView>
             </DialogContent>
@@ -227,40 +342,319 @@ const BookingModal = ({ visible, onClose, area }: BookingModalProps) => {
 interface EmptyStateProps {
     onAction: () => void;
 }
+
 const EmptyState = ({ onAction }: EmptyStateProps) => (
-    <Card>
-        <CardContent style={{ alignItems: 'center', padding: 24 }}>
-            <CalendarIcon size={48} color="#9ca3af" style={{ marginBottom: 16 }} />
-            <Text style={styles.cardTitle}>Nenhuma reserva encontrada</Text>
-            <Text style={styles.description}>Você ainda não possui reservas ativas.</Text>
-            <Button onPress={onAction} style={{ marginTop: 16 }}>
-                <Plus size={16} color="white" /> Fazer primeira reserva
+    <Card style={styles.emptyCard}>
+        <CardContent style={styles.emptyContent}>
+            <CalendarIcon size={56} color="#9ca3af" style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>Nenhuma reserva encontrada</Text>
+            <Text style={styles.emptyDescription}>Você ainda não possui reservas ativas.</Text>
+            <Button onPress={onAction} style={styles.emptyButton}>
+                <Plus size={18} color="white" style={styles.buttonIcon} />
+                <Text style={styles.emptyButtonText}>Fazer primeira reserva</Text>
             </Button>
         </CardContent>
     </Card>
 );
 
-
 // --- STYLES ---
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#f9fafb' },
-    header: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-    headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1e3a8a' },
-    headerSubtitle: { fontSize: 16, color: '#4b5563' },
-    tabsContainer: { flexDirection: 'row', backgroundColor: '#e5e7eb', margin: 16, borderRadius: 8, padding: 4 },
-    tab: { flex: 1, paddingVertical: 10, borderRadius: 6 },
-    activeTab: { backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-    tabText: { textAlign: 'center', color: '#4b5563', fontWeight: '500' },
-    activeTabText: { color: '#1e3a8a' },
-    list: { paddingHorizontal: 16, paddingBottom: 16, gap: 16 },
-    cardContent: { padding: 16 },
-    cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
-    price: { fontSize: 16, fontWeight: 'bold', color: '#2563eb' },
-    description: { fontSize: 14, color: '#6b7280' },
-    rulesContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-    metaText: { fontSize: 14, color: '#4b5563' },
-    label: { fontSize: 16, fontWeight: '500', color: '#374151', marginVertical: 16 },
-    pickerContainer: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12 },
-    modalActions: { flexDirection: 'row', gap: 12, marginTop: 24 }
+    safeArea: { 
+        flex: 1, 
+        backgroundColor: '#f3f4f6' 
+    },
+    
+    // Header
+    header: { 
+        padding: 20,
+        paddingBottom: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    headerTitle: { 
+        fontSize: 32, 
+        fontWeight: 'bold', 
+        color: '#1e3a8a',
+        marginBottom: 4,
+        lineHeight: 38,
+    },
+    headerSubtitle: { 
+        fontSize: 16, 
+        color: '#6b7280',
+        lineHeight: 22,
+    },
+    
+    // Tabs
+    tabsContainer: { 
+        flexDirection: 'row', 
+        backgroundColor: '#e5e7eb', 
+        margin: 20,
+        marginBottom: 16,
+        borderRadius: 12, 
+        padding: 4,
+    },
+    tab: { 
+        flex: 1, 
+        paddingVertical: 12,
+        borderRadius: 10,
+    },
+    activeTab: { 
+        backgroundColor: 'white', 
+        shadowColor: '#000', 
+        shadowOffset: { width: 0, height: 2 }, 
+        shadowOpacity: 0.1, 
+        shadowRadius: 4, 
+        elevation: 3,
+    },
+    tabText: { 
+        textAlign: 'center', 
+        color: '#6b7280', 
+        fontWeight: '600',
+        fontSize: 15,
+    },
+    activeTabText: { 
+        color: '#1e3a8a',
+    },
+    
+    // List
+    list: { 
+        paddingHorizontal: 20,
+        paddingBottom: 32,
+    },
+    
+    // Area Card
+    areaCard: {
+        marginBottom: 20,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+    },
+    unavailableCard: {
+        opacity: 0.65,
+    },
+    areaCardContent: { 
+        padding: 20,
+    },
+    areaCardLayout: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    iconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#eff6ff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#bfdbfe',
+    },
+    areaCardBody: {
+        flex: 1,
+        gap: 12,
+    },
+    areaCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    areaTitle: { 
+        fontSize: 20, 
+        fontWeight: 'bold', 
+        color: '#111827',
+        lineHeight: 26,
+    },
+    areaPrice: { 
+        fontSize: 18, 
+        fontWeight: 'bold', 
+        color: '#3b82f6',
+    },
+    areaDescription: { 
+        fontSize: 15, 
+        color: '#6b7280',
+        lineHeight: 21,
+    },
+    unavailableBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    rulesContainer: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap', 
+        gap: 8,
+    },
+    ruleBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    reserveButton: {
+        marginTop: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+    },
+    buttonIcon: {
+        marginRight: 2,
+    },
+    reserveButtonText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 15,
+    },
+    
+    // Reservation Card
+    reservationCard: {
+        marginBottom: 16,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+    },
+    reservationCardContent: {
+        padding: 16,
+    },
+    reservationHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 16,
+    },
+    reservationInfo: {
+        flex: 1,
+        gap: 10,
+    },
+    reservationTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    reservationTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    reservationMetaContainer: {
+        gap: 8,
+    },
+    metaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    metaText: { 
+        fontSize: 14, 
+        color: '#6b7280',
+        fontWeight: '500',
+    },
+    reservationActions: {
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        gap: 10,
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    cancelButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderColor: '#fecaca',
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    cancelIcon: {
+        marginRight: 2,
+    },
+    cancelButtonText: {
+        color: '#dc2626',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    
+    // Modal
+    modalScrollView: {
+        marginVertical: 20,
+    },
+    modalLabel: { 
+        fontSize: 16, 
+        fontWeight: '600', 
+        color: '#374151',
+        marginBottom: 12,
+        marginTop: 8,
+    },
+    calendarCard: {
+        marginBottom: 16,
+        overflow: 'hidden',
+    },
+    pickerContainer: { 
+        borderWidth: 1, 
+        borderColor: '#d1d5db', 
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        overflow: 'hidden',
+        marginBottom: 16,
+    },
+    modalActions: { 
+        flexDirection: 'row', 
+        gap: 12,
+        marginTop: 24,
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: 12,
+    },
+    cancelModalText: {
+        color: '#374151',
+        fontWeight: '600',
+        fontSize: 15,
+    },
+    confirmButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 15,
+    },
+    
+    // Empty State
+    emptyCard: {
+        marginTop: 40,
+    },
+    emptyContent: { 
+        alignItems: 'center',
+        padding: 32,
+        gap: 12,
+    },
+    emptyIcon: {
+        marginBottom: 8,
+    },
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#111827',
+    },
+    emptyDescription: {
+        fontSize: 15,
+        color: '#6b7280',
+        textAlign: 'center',
+    },
+    emptyButton: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+    },
+    emptyButtonText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 15,
+    },
 });
