@@ -16,7 +16,7 @@ const InitialLayout = () => {
     const inAppGroup = segments[0] === '(app)';
 
     if (user && !inAppGroup) { // <-- MUDANÇA AQUI
-      router.replace('/(app)/(tabs)/dashboard');
+      router.replace('/(app)/(tabs)/dashboard' as any);
     } else if (!user && inAppGroup) { // <-- MUDANÇA AQUI
       router.replace('/(auth)/login');
     }

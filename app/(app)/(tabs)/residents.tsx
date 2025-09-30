@@ -4,10 +4,10 @@ import { Picker } from '@react-native-picker/picker';
 import { Mail, MapPin, Phone, Plus, Search, Car } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/Dialog';
-import { Input } from '../../components/ui/input';
+import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../../components/ui/Dialog';
+import { Input } from '../../../components/ui/input';
 
 // --- MOCK DATA ---
 const residentsData = [ 

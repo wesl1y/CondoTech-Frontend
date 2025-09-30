@@ -1,8 +1,7 @@
-import React from 'react';
-import { createContext, useContext, useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { jwtDecode } from 'jwt-decode';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { API_URL } from '../constants/api';
 import api from '../services/api';
 
@@ -110,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to delete token:', e);
     } finally {
       setUser(null);
-      router.replace('/(auth)/login');
+      router.replace('/login');
     }
   };
 
