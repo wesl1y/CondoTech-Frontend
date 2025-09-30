@@ -33,9 +33,7 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
+              <View style={styles.header}>
           <Text style={styles.headerTitle}>
             {isAdmin ? 'Painel do Síndico' : 'Meu Condomínio'}
           </Text>
@@ -43,6 +41,9 @@ export default function DashboardScreen() {
             {isAdmin ? 'Visão geral da gestão do condomínio' : 'Acompanhe as novidades do seu lar'}
           </Text>
         </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Header */}
+
 
         {/* Quick Stats */}
         <View style={styles.quickStatsGrid}>

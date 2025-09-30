@@ -19,8 +19,13 @@ export const styles = StyleSheet.create({
     
     // Header
     header: { 
-      marginBottom: 24,
-      paddingHorizontal: 4,
+  paddingTop: 16,
+  paddingBottom: 24, // Esta é a "margem para baixo"
+  paddingHorizontal: 24,
+  backgroundColor: '#fff',
+  borderBottomWidth: 1,
+  borderBottomColor: '#e5e7eb'
+  
     },
     headerTitle: { 
       fontSize: 32, 
