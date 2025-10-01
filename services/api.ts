@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import * as Updates from 'expo-updates';
 import { API_URL } from '../constants/api';
 
 const TOKEN_KEY = 'my-jwt'; // A mesma chave que usamos no AuthContext
@@ -26,6 +27,22 @@ const createHeaders = async () => {
  * Uma função genérica para lidar com as respostas da API.
  */
 const handleResponse = async (response: Response) => {
+  // Se o status da resposta for 401, significa que o token é inválido ou expirou.
+  if (response.status === 401) {
+    console.log("Token expirado ou inválido. Limpando sessão...");
+
+    // 2. Remove o token inválido do armazenamento seguro.
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+
+    // 3. Força o aplicativo a recarregar completamente.
+    // Ao recarregar, a lógica de autenticação no seu app/_layout.tsx será
+    // executada novamente. Como não haverá mais token, o usuário será
+    // redirecionado para a tela de login.
+    await Updates.reloadAsync();
+
+    // Lança um erro para que a execução atual pare.
+    throw new Error("Sua sessão expirou. Você foi desconectado.");
+  }
   if (!response.ok) {
     // Tenta pegar uma mensagem de erro do corpo da resposta, se houver
     const errorData = await response.json().catch(() => null);

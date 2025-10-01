@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Bell, Calendar, AlertTriangle, User, Users, BarChart3 } from 'lucide-react-native';
+import { AlertTriangle, Bell, Calendar, Home, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
