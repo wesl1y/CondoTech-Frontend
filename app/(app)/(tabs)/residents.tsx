@@ -19,7 +19,7 @@ import Toast from 'react-native-toast-message';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../../components/ui/Dialog';
-import { Input } from '../../../components/ui/input';
+import { Input } from '@/components/ui/input';
 import { useMoradores } from '../../../hooks/useMoradores';
 import { useUnidades } from '../../../hooks/useUnidades';
 import { CreateMoradorDTO, MoradorDTO, TipoMorador } from '../../../services/moradorService';

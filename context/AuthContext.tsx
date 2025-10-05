@@ -31,6 +31,7 @@ interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'USER';
+  moradorId: number;
   phone: string;
   unit: string;
   tower: string;
