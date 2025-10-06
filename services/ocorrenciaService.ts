@@ -19,13 +19,21 @@ export interface Ocorrencia {
     updatedAt?: string;
 }
 
+// ✅ NOVO: Interface para resposta paginada
+export interface PaginatedResponse {
+    ocorrencias: Ocorrencia[];
+    currentPage: number;
+    totalItems: number;
+    totalPages: number;
+    hasMore: boolean;
+}
+
 const handleFetchResponse = async (response: Response) => {
     if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         const errorMessage = errorData?.message || `Erro: ${response.status}`;
         throw new Error(errorMessage);
     }
-    // Retorna null para respostas sem conteúdo (ex: 204 No Content)
     if (response.status === 204 || response.headers.get("Content-Length") === "0") {
         return null;
     }
@@ -34,13 +42,15 @@ const handleFetchResponse = async (response: Response) => {
 
 export const ocorrenciaService = {
     /**
-     * ✅ ALTERADO: Busca ocorrências, opcionalmente filtrando por status.
+     * ✅ ALTERADO: Agora retorna PaginatedResponse e aceita parâmetros de paginação
      * @param status - String opcional (ex: 'CANCELADA') para filtrar os resultados.
+     * @param page - Número da página (padrão: 0)
+     * @param size - Tamanho da página (padrão: 10)
      */
-    async getAll(status?: string): Promise<Ocorrencia[]> {
-        let url = '/ocorrencias';
+    async getAll(status?: string, page: number = 0, size: number = 10): Promise<PaginatedResponse> {
+        let url = `/ocorrencias?page=${page}&size=${size}`;
         if (status) {
-            url += `?status=${status}`;
+            url += `&status=${status}`;
         }
         return api.get(url);
     },
@@ -49,8 +59,11 @@ export const ocorrenciaService = {
         return api.get(`/ocorrencias/${id}`);
     },
 
-    async getByMorador(moradorId: number): Promise<Ocorrencia[]> {
-        return api.get(`/ocorrencias/morador/${moradorId}`);
+    /**
+     * ✅ ALTERADO: Agora retorna PaginatedResponse e aceita parâmetros de paginação
+     */
+    async getByMorador(moradorId: number, page: number = 0, size: number = 10): Promise<PaginatedResponse> {
+        return api.get(`/ocorrencias/morador/${moradorId}?page=${page}&size=${size}`);
     },
 
     async create(ocorrencia: Ocorrencia, image?: any): Promise<Ocorrencia> {
@@ -113,11 +126,6 @@ export const ocorrenciaService = {
         return handleFetchResponse(response);
     },
 
-    /**
-     * ✅ NOVO MÉTODO: Em vez de deletar, faz uma chamada PUT para o endpoint que
-     * altera o status da ocorrência para 'CANCELADA'.
-     * @param id - O ID da ocorrência a ser cancelada.
-     */
     async cancel(id: number): Promise<void> {
         const token = await SecureStore.getItemAsync(TOKEN_KEY);
 
@@ -129,7 +137,6 @@ export const ocorrenciaService = {
             },
         });
         
-        // handleFetchResponse retornará null ou lançará um erro, o que é perfeito para um retorno Promise<void>
         await handleFetchResponse(response);
     },
 };
