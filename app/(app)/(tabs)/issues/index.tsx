@@ -1,17 +1,25 @@
-// src/app/(tabs)/issues/index.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FlatList, SafeAreaView, ScrollView, Text, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
+import { FlatList, SafeAreaView, ScrollView, Text, TouchableOpacity, View, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Plus, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react-native';
+import { Picker } from '@react-native-picker/picker';
+import { Plus, AlertTriangle, Clock, CheckCircle2, Search, X } from 'lucide-react-native';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { Ocorrencia, ocorrenciaService } from '@/services/ocorrenciaService';
 import { styles } from './styles';
-
-
 import { IssueCard } from './components/IssueCard';
 import { NewIssueModal } from './components/NewIssueModal';
 import { IssueDetailModal } from './components/IssueDetailModal';
+
+const issueTypes = [
+    'Manutenção', 
+    'Segurança', 
+    'Limpeza', 
+    'Infraestrutura', 
+    'Barulho', 
+    'Iluminação', 
+    'Outros'
+];
 
 export default function IssuesScreen() {
     const { user } = useAuth();
@@ -25,9 +33,12 @@ export default function IssuesScreen() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [currentPage, setCurrentPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
-    const [isInitialLoad, setIsInitialLoad] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchTipo, setSearchTipo] = useState<string>('');
+    const [isSearching, setIsSearching] = useState(false);
     const activeTabRef = useRef(activeTab);
-
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    
     const [totalCounts, setTotalCounts] = useState({
         todas: 0,
         pendente: 0,
@@ -89,22 +100,14 @@ export default function IssuesScreen() {
         }, [loadCounters, user])
     );
     
-    const loadIssues = useCallback(async (page: number = 0, append: boolean = false) => {
+    const loadIssues = useCallback(async (page: number = 0, append: boolean = false, query: string = '', tipo: string = '') => {
         if (!user) return;
         
         const currentTab = activeTabRef.current;
-        if (page === 0 && !append) {
-            setIsInitialLoad(true);
-        }
-        
-        if (page === 0) {
-            setLoading(true);
-        } else {
-            setLoadingMore(true);
-        }
+        if (page === 0) { setLoading(true); } else { setLoadingMore(true); }
         
         try {
-            let activeData;
+            let responseData;
             const getStatusParam = () => {
                 if (currentTab === 'Todas') return undefined;
                 if (currentTab === 'Canceladas') return 'CANCELADA';
@@ -115,27 +118,28 @@ export default function IssuesScreen() {
             };
             const statusParam = getStatusParam();
     
-            if (isAdmin) {
-                activeData = await ocorrenciaService.getAll(statusParam, page, 10);
-            } else if (user.moradorId) {
-                activeData = await ocorrenciaService.getByMorador(user.moradorId, page, 10);
+            if (query.trim()) {
+                if (isAdmin) {
+                    responseData = await ocorrenciaService.search(query, statusParam, tipo || undefined, page, 10);
+                } else if (user.moradorId) {
+                    responseData = await ocorrenciaService.searchByMorador(user.moradorId, query, tipo || undefined, page, 10);
+                }
+            } else {
+                if (isAdmin) {
+                    responseData = await ocorrenciaService.getAll(statusParam, page, 10);
+                } else if (user.moradorId) {
+                    responseData = await ocorrenciaService.getByMorador(user.moradorId, page, 10);
+                }
             }
             
-            if (activeData) {
+            if (responseData) {
                 const targetArraySetter = currentTab === 'Canceladas' ? setCancelledIssues : setAllIssues;
-                
                 if (append) {
-                    targetArraySetter(prev => {
-                        const newItems = activeData.ocorrencias.filter(
-                            (newItem: Ocorrencia) => !prev.some(existingItem => existingItem.id === newItem.id)
-                        );
-                        return [...prev, ...newItems];
-                    });
+                    targetArraySetter(prev => [...prev, ...responseData.ocorrencias.filter((newItem: Ocorrencia) => !prev.some(existing => existing.id === newItem.id))]);
                 } else {
-                    targetArraySetter(activeData.ocorrencias);
+                    targetArraySetter(responseData.ocorrencias);
                 }
-                
-                setHasMore(activeData.hasMore);
+                setHasMore(responseData.hasMore);
                 setCurrentPage(page);
             }
         } catch (error) {
@@ -144,34 +148,38 @@ export default function IssuesScreen() {
         } finally {
             setLoading(false);
             setLoadingMore(false);
-            setTimeout(() => setIsInitialLoad(false), 500);
+            setIsSearching(false);
         }
     }, [user, isAdmin]);
 
-    const handleLoadMore = () => {
-        if (!loadingMore && hasMore && !loading && !isInitialLoad) {
-            loadIssues(currentPage + 1, true);
-        }
-    };
-
     useEffect(() => {
-        setCurrentPage(0);
-        setHasMore(true);
-        setLoading(true);
-        setIsInitialLoad(false); 
-        
-        if (activeTab === 'Canceladas') {
-            setCancelledIssues([]);
-        } else {
-            setAllIssues([]);
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
         }
-        
-        loadIssues(0, false);
-    }, [activeTab]);
+
+        if (searchQuery.trim()) {
+            setIsSearching(true);
+            searchTimeoutRef.current = setTimeout(() => {
+                setCurrentPage(0);
+                setHasMore(true);
+                loadIssues(0, false, searchQuery, searchTipo);
+            }, 500);
+        } else {
+            setIsSearching(false);
+            if (searchTipo) setSearchTipo('');
+            loadIssues(0, false);
+        }
+
+        return () => {
+            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        }
+    }, [searchQuery, searchTipo, activeTab]);
 
     const handleRefresh = useCallback(() => {
         setCurrentPage(0);
         setHasMore(true);
+        setSearchQuery('');
+        setSearchTipo('');
         loadCounters();
         loadIssues(0, false);
     }, [loadCounters, loadIssues]);
@@ -221,6 +229,39 @@ export default function IssuesScreen() {
                     <Text style={styles.buttonText}>Nova</Text>
                 </Button>
             </View>
+            
+            <View style={styles.searchFilterContainer}>
+                <View style={styles.searchInputWrapper}>
+                    <Search size={20} color="#64748b" style={styles.searchIcon} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Pesquisar por título, descrição..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        placeholderTextColor="#94a3b8"
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClearButton}>
+                            {isSearching ? <ActivityIndicator size="small" color="#64748b" /> : <X size={18} color="#64748b" />}
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {searchQuery.trim().length > 0 && (
+                    <View style={styles.filterPickerContainer}>
+                        <Picker
+                            selectedValue={searchTipo}
+                            onValueChange={(itemValue) => setSearchTipo(itemValue)}
+                            style={styles.filterPicker}
+                        >
+                            <Picker.Item label="Todas as categorias" value="" />
+                            {issueTypes.map(type => (
+                                <Picker.Item key={type} label={type} value={type.toUpperCase()} />
+                            ))}
+                        </Picker>
+                    </View>
+                )}
+            </View>
 
             <View style={styles.statusCardsContainer}>
                 <View style={[styles.statusCard, styles.statusCardDanger]}>
@@ -234,15 +275,15 @@ export default function IssuesScreen() {
                     <Text style={styles.statusCardLabel}>Em andamento</Text>
                 </View>
                 <View style={[styles.statusCard, styles.statusCardSuccess]}>
-                    <CheckCircle2 size={20} color="#16a34a" />
+                    <CheckCircle2 size={20} color="#16a4aa" />
                     <Text style={styles.statusCardNumber}>{getStatusCount('Resolvida')}</Text>
                     <Text style={styles.statusCardLabel}>Resolvidas</Text>
                 </View>
             </View>
-
+            
             <View style={styles.tabsContainer}>
-                <ScrollView 
-                    horizontal 
+                <ScrollView
+                    horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.tabsScrollContent}
                 >
@@ -253,19 +294,15 @@ export default function IssuesScreen() {
                             style={[styles.tab, activeTab === tab && styles.activeTab]}
                             activeOpacity={0.7}
                         >
-                            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                                {tab}
-                            </Text>
+                            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
                             <View style={[styles.tabBadge, activeTab === tab && styles.activeTabBadge]}>
-                                <Text style={[styles.tabBadgeText, activeTab === tab && styles.activeTabBadgeText]}>
-                                    {getStatusCount(tab)}
-                                </Text>
+                                <Text style={[styles.tabBadgeText, activeTab === tab && styles.activeTabBadgeText]}>{getStatusCount(tab)}</Text>
                             </View>
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
             </View>
-
+            
             <FlatList
                 data={issuesToDisplay}
                 keyExtractor={item => item.id?.toString() || Math.random().toString()}
@@ -277,12 +314,19 @@ export default function IssuesScreen() {
                     !loading && !loadingMore ? (
                         <View style={styles.emptyContainer}>
                             <AlertTriangle size={48} color="#9ca3af" />
-                            <Text style={styles.emptyText}>Nenhuma ocorrência encontrada</Text>
+                            <Text style={styles.emptyText}>
+                                {searchQuery ? 'Nenhuma ocorrência encontrada para esta pesquisa' : 'Nenhuma ocorrência encontrada'}
+                            </Text>
+                            {searchQuery && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearchButton}>
+                                    <Text style={styles.clearSearchButtonText}>Limpar pesquisa</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     ) : null
                 }
                 ListFooterComponent={renderFooter}
-                onEndReached={handleLoadMore}
+                onEndReached={() => { if (!loadingMore && hasMore) { loadIssues(currentPage + 1, true, searchQuery, searchTipo); }}}
                 onEndReachedThreshold={0.5}
                 refreshing={loading}
                 onRefresh={handleRefresh}

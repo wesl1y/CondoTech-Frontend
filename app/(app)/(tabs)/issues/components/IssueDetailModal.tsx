@@ -23,6 +23,7 @@ interface IssueDetailModalProps {
 
 export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDetailModalProps) => {
     const { user } = useAuth();
+    const [localIssue, setLocalIssue] = useState<Ocorrencia>(issue);
     const [imageBase64, setImageBase64] = useState<string | null>(null);
     const [loadingImage, setLoadingImage] = useState(false);
     const [updating, setUpdating] = useState(false);
@@ -31,9 +32,14 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
     const [novoComentario, setNovoComentario] = useState('');
     const [enviandoComentario, setEnviandoComentario] = useState(false);
 
-    const displayStatus = statusMap[issue.statusOcorrencia] || issue.statusOcorrencia;
+    // Sincroniza o estado local quando a issue prop mudar
+    useEffect(() => {
+        setLocalIssue(issue);
+    }, [issue]);
+
+    const displayStatus = statusMap[localIssue.statusOcorrencia] || localIssue.statusOcorrencia;
     const isAdmin = user?.role === 'ADMIN';
-    const canCancel = isAdmin && !['RESOLVIDA', 'CANCELADA', 'FECHADA'].includes(issue.statusOcorrencia);
+    const canCancel = isAdmin && !['RESOLVIDA', 'CANCELADA', 'FECHADA'].includes(localIssue.statusOcorrencia);
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -67,10 +73,10 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
 
     useEffect(() => {
         const loadComentarios = async () => {
-            if (!issue.id || !visible) return;
+            if (!localIssue.id || !visible) return;
             setLoadingComentarios(true);
             try {
-                const data = await comentarioService.getByOcorrencia(issue.id);
+                const data = await comentarioService.getByOcorrencia(localIssue.id);
                 setComentarios(data);
             } catch (error) {
                 console.error('Erro ao carregar comentários:', error);
@@ -79,14 +85,14 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
             }
         };
         loadComentarios();
-    }, [issue.id, visible]);
+    }, [localIssue.id, visible]);
 
     useEffect(() => {
         const loadImage = async () => {
-            if (!issue.imageUrl) return;
+            if (!localIssue.imageUrl) return;
             setLoadingImage(true);
             try {
-                const imageUrl = getFullImageUrl(issue.imageUrl);
+                const imageUrl = getFullImageUrl(localIssue.imageUrl);
                 const token = await SecureStore.getItemAsync('my-jwt');
                 const response = await fetch(imageUrl!, { headers: { Authorization: `Bearer ${token}` } });
                 if (response.ok) {
@@ -105,7 +111,7 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
             }
         };
         if (visible) loadImage();
-    }, [issue.imageUrl, visible]);
+    }, [localIssue.imageUrl, visible]);
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'Não informada';
@@ -129,21 +135,26 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
         return date.toLocaleDateString('pt-BR');
     };
 
-  const handleStatusChange = async (newStatus: string) => {
-        if (!issue.id) return;
+    const handleStatusChange = async (newStatus: string) => {
+        if (!localIssue.id) return;
+        
+        // Atualização otimista - atualiza o estado local imediatamente
+        const previousIssue = localIssue;
+        const updatedIssue: Ocorrencia = { 
+            ...localIssue, 
+            statusOcorrencia: newStatus, 
+            dataResolucao: ['RESOLVIDA', 'FECHADA'].includes(newStatus) ? new Date().toISOString() : localIssue.dataResolucao 
+        };
+        
+        setLocalIssue(updatedIssue);
         setUpdating(true);
+        
         try {
-            // AQUI ESTÁ A CORREÇÃO:
-            // Reverti para a sua lógica original, garantindo que o objeto `updatedData`
-            // seja do tipo `Ocorrencia` completo, como a função de update espera.
-            const updatedData: Ocorrencia = { 
-                ...issue, 
-                statusOcorrencia: newStatus, 
-                dataResolucao: ['RESOLVIDA', 'FECHADA'].includes(newStatus) ? new Date().toISOString() : issue.dataResolucao 
-            };
-            await ocorrenciaService.update(issue.id, updatedData);
-            onUpdate();
+            await ocorrenciaService.update(localIssue.id, updatedIssue);
+            onUpdate(); // Atualiza a lista em background
         } catch (error) {
+            // Reverte em caso de erro
+            setLocalIssue(previousIssue);
             Alert.alert('Erro', 'Não foi possível atualizar o status');
         } finally {
             setUpdating(false);
@@ -161,8 +172,8 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            if (issue.id) {
-                                await ocorrenciaService.cancel(issue.id);
+                            if (localIssue.id) {
+                                await ocorrenciaService.cancel(localIssue.id);
                                 onUpdate();
                                 onClose();
                             }
@@ -176,12 +187,12 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
     };
 
     const handleEnviarComentario = async () => {
-        if (!novoComentario.trim() || !issue.id || !user || !user.moradorId) return;
+        if (!novoComentario.trim() || !localIssue.id || !user || !user.moradorId) return;
 
         setEnviandoComentario(true);
         try {
             const comentario: Comentario = {
-                ocorrenciaId: issue.id,
+                ocorrenciaId: localIssue.id,
                 moradorId: user.moradorId,
                 texto: novoComentario.trim(),
             };
@@ -217,13 +228,13 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
                             <View style={styles.quickActionsContainer}>
                                 <Text style={styles.quickActionsLabel}>Ações rápidas</Text>
                                 <View style={styles.quickActionsButtons}>
-                                    {issue.statusOcorrencia === 'ABERTA' && (
+                                    {localIssue.statusOcorrencia === 'ABERTA' && (
                                         <Button variant="outline" onPress={() => handleStatusChange('EM_ANDAMENTO')} style={styles.quickActionButton} disabled={updating}>
                                             <Clock size={16} color="#ca8a04" />
                                             <Text style={styles.quickActionText}>Iniciar</Text>
                                         </Button>
                                     )}
-                                    {(issue.statusOcorrencia === 'ABERTA' || issue.statusOcorrencia === 'EM_ANDAMENTO') && (
+                                    {(localIssue.statusOcorrencia === 'ABERTA' || localIssue.statusOcorrencia === 'EM_ANDAMENTO') && (
                                         <Button variant="outline" onPress={() => handleStatusChange('RESOLVIDA')} style={styles.quickActionButton} disabled={updating}>
                                             <CheckCircle2 size={16} color="#16a34a" />
                                             <Text style={styles.quickActionText}>Resolver</Text>
@@ -240,11 +251,11 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
                         )}
 
                         <View style={styles.detailTitleSection}>
-                            <Text style={styles.detailTitle}>{issue.titulo}</Text>
-                            <Badge variant="outline" style={styles.detailTypeBadge}><Text>{issue.tipoOcorrencia}</Text></Badge>
+                            <Text style={styles.detailTitle}>{localIssue.titulo}</Text>
+                            <Badge variant="outline" style={styles.detailTypeBadge}><Text>{localIssue.tipoOcorrencia}</Text></Badge>
                         </View>
 
-                        {issue.imageUrl && (
+                        {localIssue.imageUrl && (
                             <View style={styles.detailImageSection}>
                                 <Text style={styles.detailLabel}>Foto</Text>
                                 {loadingImage ? (
@@ -264,17 +275,17 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
 
                         <View style={styles.detailSection}>
                             <Text style={styles.detailLabel}>Descrição</Text>
-                            <Text style={styles.detailText}>{issue.descricao}</Text>
+                            <Text style={styles.detailText}>{localIssue.descricao}</Text>
                         </View>
 
                         <View style={styles.detailInfoGrid}>
                             <View style={styles.detailInfoCard}>
                                 <Text style={styles.detailInfoLabel}>Morador</Text>
-                                <Text style={styles.detailInfoText}>{issue.moradorNome || 'Não informado'}</Text>
+                                <Text style={styles.detailInfoText}>{localIssue.moradorNome || 'Não informado'}</Text>
                             </View>
                             <View style={styles.detailInfoCard}>
                                 <Text style={styles.detailInfoLabel}>Data de Criação</Text>
-                                <Text style={styles.detailInfoText}>{formatDate(issue.createdAt)}</Text>
+                                <Text style={styles.detailInfoText}>{formatDate(localIssue.createdAt)}</Text>
                             </View>
                         </View>
 
@@ -322,7 +333,7 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
                                 </View>
                             )}
 
-                            {issue.statusOcorrencia !== 'CANCELADA' && (
+                            {localIssue.statusOcorrencia !== 'CANCELADA' && (
                                 <View style={styles.commentInputContainer}>
                                     <View style={styles.commentInputWrapper}>
                                         <Input
@@ -351,9 +362,9 @@ export const IssueDetailModal = ({ issue, visible, onClose, onUpdate }: IssueDet
                             )}
                         </View>
 
-                        {issue.updatedAt && (
+                        {localIssue.updatedAt && (
                             <Text style={styles.detailUpdateDate}>
-                                Última atualização: {formatDate(issue.updatedAt)}
+                                Última atualização: {formatDate(localIssue.updatedAt)}
                             </Text>
                         )}
                     </ScrollView>

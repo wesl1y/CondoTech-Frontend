@@ -19,7 +19,6 @@ export interface Ocorrencia {
     updatedAt?: string;
 }
 
-// ✅ NOVO: Interface para resposta paginada
 export interface PaginatedResponse {
     ocorrencias: Ocorrencia[];
     currentPage: number;
@@ -41,12 +40,6 @@ const handleFetchResponse = async (response: Response) => {
 }
 
 export const ocorrenciaService = {
-    /**
-     * ✅ ALTERADO: Agora retorna PaginatedResponse e aceita parâmetros de paginação
-     * @param status - String opcional (ex: 'CANCELADA') para filtrar os resultados.
-     * @param page - Número da página (padrão: 0)
-     * @param size - Tamanho da página (padrão: 10)
-     */
     async getAll(status?: string, page: number = 0, size: number = 10): Promise<PaginatedResponse> {
         let url = `/ocorrencias?page=${page}&size=${size}`;
         if (status) {
@@ -59,11 +52,41 @@ export const ocorrenciaService = {
         return api.get(`/ocorrencias/${id}`);
     },
 
-    /**
-     * ✅ ALTERADO: Agora retorna PaginatedResponse e aceita parâmetros de paginação
-     */
     async getByMorador(moradorId: number, page: number = 0, size: number = 10): Promise<PaginatedResponse> {
         return api.get(`/ocorrencias/morador/${moradorId}?page=${page}&size=${size}`);
+    },
+
+   async searchByMorador(
+        moradorId: number,
+        query: string,
+        tipo?: string, // ✅ 1. Parâmetro opcional de tipo adicionado
+        page: number = 0,
+        size: number = 10
+    ): Promise<PaginatedResponse> {
+        let url = `/ocorrencias/morador/${moradorId}/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`;
+        
+       
+        if (tipo) {
+            url += `&tipo=${encodeURIComponent(tipo)}`;
+        }
+        return api.get(url);
+    },
+
+       async search(
+        query: string, 
+        status?: string, 
+        tipo?: string, 
+        page: number = 0, 
+        size: number = 20
+    ): Promise<PaginatedResponse> {
+        let url = `/ocorrencias/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`;
+        if (status) {
+            url += `&status=${status}`;
+        }
+        if (tipo) {
+            url += `&tipo=${encodeURIComponent(tipo)}`;
+        }
+        return api.get(url);
     },
 
     async create(ocorrencia: Ocorrencia, image?: any): Promise<Ocorrencia> {

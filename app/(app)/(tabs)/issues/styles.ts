@@ -1,5 +1,3 @@
-
-
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
@@ -57,12 +55,60 @@ export const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 15,
     },
+    
+    // Search and Filter
+    searchFilterContainer: {
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 16,
+        backgroundColor: '#fff',
+        gap: 12,
+    },
+    searchInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        height: 50,
+        borderWidth: 1.5,
+        borderColor: '#e2e8f0',
+    },
+    searchIcon: {
+        marginRight: 10,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#0f172a',
+        paddingVertical: 0,
+        fontWeight: '500',
+    },
+    searchClearButton: {
+        padding: 6,
+        marginLeft: 4,
+        borderRadius: 8,
+        backgroundColor: '#f1f5f9',
+    },
+    filterPickerContainer: { 
+        borderWidth: 1.5, 
+        borderColor: '#e2e8f0', 
+        borderRadius: 12,
+        backgroundColor: '#f8fafc',
+        overflow: 'hidden',
+    },
+    filterPicker: {
+        height: 50,
+    },
+    
+    // Status Cards
     statusCardsContainer: {
         flexDirection: 'row',
         padding: 16,
-        paddingBottom: 12,
+        paddingTop: 16,
+        paddingBottom: 16,
         gap: 10,
-        backgroundColor: '#fff',
+        backgroundColor: '#f8fafc',
     },
     statusCard: {
         flex: 1,
@@ -105,11 +151,14 @@ export const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
+    
+    // Tabs
     tabsContainer: { 
         backgroundColor: '#fff',
         borderBottomWidth: 1, 
         borderBottomColor: '#e2e8f0',
-        paddingTop: 4,
+        paddingTop: 12,
+        marginTop: 4,
     },
     tabsScrollContent: {
         paddingHorizontal: 16,
@@ -157,6 +206,8 @@ export const styles = StyleSheet.create({
     activeTabBadgeText: {
         color: '#2563eb',
     },
+    
+    // List
     list: { 
         padding: 16,
         paddingTop: 20,
@@ -180,6 +231,20 @@ export const styles = StyleSheet.create({
         fontSize: 14,
         maxWidth: 280,
     },
+    clearSearchButton: {
+        marginTop: 16,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        backgroundColor: '#2563eb',
+        borderRadius: 8,
+    },
+    clearSearchButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    
+    // Issue Card
     issueCard: { 
         backgroundColor: '#fff',
         borderRadius: 16,
@@ -271,10 +336,9 @@ export const styles = StyleSheet.create({
         fontWeight: '500',
     },
     
-    // --- [INÍCIO] MUDANÇAS PARA O MODAL DE CRIAÇÃO ---
-     modalScrollView: {
+    // Modal styles
+    modalScrollView: {
         marginVertical: 8,
-        // maxHeight foi REMOVIDO daqui para permitir que a ScrollView se expanda
     },
     formGroup: {
         marginBottom: 22, 
@@ -295,7 +359,7 @@ export const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     picker: {
-        height: 52,
+        height: 50,
     },
     imagePreview: {
         width: '100%',
@@ -325,7 +389,7 @@ export const styles = StyleSheet.create({
     modalActions: { 
         flexDirection: 'row', 
         gap: 12,
-        marginTop: 24, // Aumenta o espaço antes dos botões
+        marginTop: 24,
         paddingTop: 16,
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
@@ -345,7 +409,6 @@ export const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 15,
     },
-    // --- [FIM] MUDANÇAS PARA O MODAL DE CRIAÇÃO ---
 
     // Detail Modal
     detailScrollView: {
@@ -524,7 +587,7 @@ export const styles = StyleSheet.create({
         color: '#b91c1c',
     },
 
-    // ... (restante dos estilos sem alteração) ...
+    // Comments Section
     commentsSection: {
         marginTop: 24,
         marginBottom: 16,
@@ -682,16 +745,18 @@ export const styles = StyleSheet.create({
         shadowOpacity: 0,
         elevation: 0,
     },
+    
+    // Footer
     footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-},
-footerLoaderText: {
-    color: '#6b7280',
-    fontSize: 14,
-    fontWeight: '500',
-},
+        paddingVertical: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 8,
+    },
+    footerLoaderText: {
+        color: '#6b7280',
+        fontSize: 14,
+        fontWeight: '500',
+    },
 });
