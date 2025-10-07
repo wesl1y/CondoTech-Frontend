@@ -40,53 +40,38 @@ const handleFetchResponse = async (response: Response) => {
 }
 
 export const ocorrenciaService = {
-    async getAll(status?: string, page: number = 0, size: number = 10): Promise<PaginatedResponse> {
-        let url = `/ocorrencias?page=${page}&size=${size}`;
-        if (status) {
-            url += `&status=${status}`;
-        }
+   
+    // ✅ MÉTODO ÚNICO PARA ADMIN - busca universal
+    async search(
+        query: string = '', 
+        status?: string, 
+        tipo?: string, 
+        page: number = 0, 
+        size: number = 10
+    ): Promise<PaginatedResponse> {
+        let url = `/ocorrencias/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`;
+        if (status) url += `&status=${status}`;
+        if (tipo) url += `&tipo=${encodeURIComponent(tipo)}`;
+        return api.get(url);
+    },
+
+    // ✅ MÉTODO ÚNICO PARA MORADOR - busca universal
+    async searchByMorador(
+        moradorId: number,
+        query: string = '',
+        status?: string,
+        tipo?: string,
+        page: number = 0,
+        size: number = 10
+    ): Promise<PaginatedResponse> {
+        let url = `/ocorrencias/morador/${moradorId}/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`;
+        if (status) url += `&status=${status}`;
+        if (tipo) url += `&tipo=${encodeURIComponent(tipo)}`;
         return api.get(url);
     },
 
     async getById(id: number): Promise<Ocorrencia> {
         return api.get(`/ocorrencias/${id}`);
-    },
-
-    async getByMorador(moradorId: number, page: number = 0, size: number = 10): Promise<PaginatedResponse> {
-        return api.get(`/ocorrencias/morador/${moradorId}?page=${page}&size=${size}`);
-    },
-
-   async searchByMorador(
-        moradorId: number,
-        query: string,
-        tipo?: string, // ✅ 1. Parâmetro opcional de tipo adicionado
-        page: number = 0,
-        size: number = 10
-    ): Promise<PaginatedResponse> {
-        let url = `/ocorrencias/morador/${moradorId}/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`;
-        
-       
-        if (tipo) {
-            url += `&tipo=${encodeURIComponent(tipo)}`;
-        }
-        return api.get(url);
-    },
-
-       async search(
-        query: string, 
-        status?: string, 
-        tipo?: string, 
-        page: number = 0, 
-        size: number = 20
-    ): Promise<PaginatedResponse> {
-        let url = `/ocorrencias/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`;
-        if (status) {
-            url += `&status=${status}`;
-        }
-        if (tipo) {
-            url += `&tipo=${encodeURIComponent(tipo)}`;
-        }
-        return api.get(url);
     },
 
     async create(ocorrencia: Ocorrencia, image?: any): Promise<Ocorrencia> {

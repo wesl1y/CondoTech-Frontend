@@ -47,21 +47,19 @@ export default function IssuesScreen() {
         cancelada: 0
     });
 
-    const tabs = ['Todas', 'Pendente', 'Em andamento', 'Resolvida'];
-    if (isAdmin) {
-        tabs.push('Canceladas');
-    }
+    const tabs = ['Todas', 'Pendente', 'Em andamento', 'Resolvida', 'Canceladas'];
+    
 
     const loadCounters = useCallback(async () => {
         if (!user) return;
         try {
             if (isAdmin) {
                 const [todasData, pendenteData, emAndamentoData, resolvidaData, canceladaData] = await Promise.all([
-                    ocorrenciaService.getAll(undefined, 0, 1),
-                    ocorrenciaService.getAll('ABERTA', 0, 1),
-                    ocorrenciaService.getAll('EM_ANDAMENTO', 0, 1),
-                    ocorrenciaService.getAll('RESOLVIDA', 0, 1),
-                    ocorrenciaService.getAll('CANCELADA', 0, 1),
+                    ocorrenciaService.search('', undefined, undefined, 0, 1),
+                    ocorrenciaService.search('', 'ABERTA', undefined, 0, 1),
+                    ocorrenciaService.search('', 'EM_ANDAMENTO', undefined, 0, 1),
+                    ocorrenciaService.search('', 'RESOLVIDA', undefined, 0, 1),
+                    ocorrenciaService.search('', 'CANCELADA', undefined, 0, 1),
                 ]);
                 setTotalCounts({
                     todas: todasData.totalItems,
@@ -71,16 +69,19 @@ export default function IssuesScreen() {
                     cancelada: canceladaData.totalItems,
                 });
             } else if (user.moradorId) {
-                const allData = await ocorrenciaService.getByMorador(user.moradorId, 0, 9999);
-                const pendente = allData.ocorrencias.filter(o => o.statusOcorrencia === 'ABERTA').length;
-                const emAndamento = allData.ocorrencias.filter(o => o.statusOcorrencia === 'EM_ANDAMENTO').length;
-                const resolvida = allData.ocorrencias.filter(o => ['RESOLVIDA', 'FECHADA'].includes(o.statusOcorrencia)).length;
+                const [todasData, pendenteData, emAndamentoData, resolvidaData, canceladaData] = await Promise.all([
+                    ocorrenciaService.searchByMorador(user.moradorId, '', undefined, undefined, 0, 1),
+                    ocorrenciaService.searchByMorador(user.moradorId, '', 'ABERTA', undefined, 0, 1),
+                    ocorrenciaService.searchByMorador(user.moradorId, '', 'EM_ANDAMENTO', undefined, 0, 1),
+                    ocorrenciaService.searchByMorador(user.moradorId, '', 'RESOLVIDA', undefined, 0, 1),
+                    ocorrenciaService.searchByMorador(user.moradorId, '', 'CANCELADA', undefined, 0, 1),
+                ]);
                 setTotalCounts({
-                    todas: allData.totalItems,
-                    pendente,
-                    emAndamento,
-                    resolvida,
-                    cancelada: 0,
+                    todas: todasData.totalItems,
+                    pendente: pendenteData.totalItems,
+                    emAndamento: emAndamentoData.totalItems,
+                    resolvida: resolvidaData.totalItems,
+                    cancelada: canceladaData.totalItems,
                 });
             }
         } catch (error) {
@@ -117,25 +118,35 @@ export default function IssuesScreen() {
                 return undefined;
             };
             const statusParam = getStatusParam();
-    
-            if (query.trim()) {
-                if (isAdmin) {
-                    responseData = await ocorrenciaService.search(query, statusParam, tipo || undefined, page, 10);
-                } else if (user.moradorId) {
-                    responseData = await ocorrenciaService.searchByMorador(user.moradorId, query, tipo || undefined, page, 10);
-                }
-            } else {
-                if (isAdmin) {
-                    responseData = await ocorrenciaService.getAll(statusParam, page, 10);
-                } else if (user.moradorId) {
-                    responseData = await ocorrenciaService.getByMorador(user.moradorId, page, 10);
-                }
+
+            if (isAdmin) {
+                responseData = await ocorrenciaService.search(
+                    query, 
+                    statusParam, 
+                    tipo || undefined, 
+                    page, 
+                    10
+                );
+            } else if (user.moradorId) {
+                responseData = await ocorrenciaService.searchByMorador(
+                    user.moradorId, 
+                    query, 
+                    statusParam,
+                    tipo || undefined, 
+                    page, 
+                    10
+                );
             }
             
             if (responseData) {
                 const targetArraySetter = currentTab === 'Canceladas' ? setCancelledIssues : setAllIssues;
                 if (append) {
-                    targetArraySetter(prev => [...prev, ...responseData.ocorrencias.filter((newItem: Ocorrencia) => !prev.some(existing => existing.id === newItem.id))]);
+                    targetArraySetter(prev => [
+                        ...prev, 
+                        ...responseData.ocorrencias.filter(
+                            (newItem: Ocorrencia) => !prev.some(existing => existing.id === newItem.id)
+                        )
+                    ]);
                 } else {
                     targetArraySetter(responseData.ocorrencias);
                 }
