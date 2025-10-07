@@ -101,7 +101,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: 16,
     },
-    card: { width: '100%' },
+    card: { width: '100%',
+        padding: 16
+     },
     title: { textAlign: 'center' },
     subtitle: {
         textAlign: 'center',

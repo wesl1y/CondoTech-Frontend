@@ -46,10 +46,9 @@ export default function Login() {
     try {
       await signIn(email, password); // Chama o signIn com a senha
     } catch (error) {
-      // O erro já é tratado e exibido pelo AuthContext,
-      // mas podemos fazer algo a mais aqui se necessário.
+    
     } finally {
-      setIsLoggingIn(false); // Finaliza o carregamento, independentemente do resultado
+      setIsLoggingIn(false); 
     }
   };
 
@@ -138,9 +137,10 @@ const styles = StyleSheet.create({
     color: '#4b5563',
   },
   loginCard: {
+  padding: 16,
     width: '100%',
   },
-  // ---------------------------------------------------
+
   inputGroup: {
     gap: 8,
   },
