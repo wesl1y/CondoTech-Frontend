@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Button } from '@/components/ui/button'; // ATUALIZADO: 'ButtonText' removido da importação
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Mail, ArrowLeft } from 'lucide-react-native';
-import { Link, useRouter } from 'expo-router';
+import { API_URL } from '@/constants/api';
+import api from '@/services/api';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, Loader2, Mail } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // ATUALIZADO: 'Text' já está aqui
 
-// NOVO: Função de validação de e-mail com Regex
 const validateEmail = (email: string) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
@@ -15,39 +16,57 @@ const validateEmail = (email: string) => {
 
 export default function ForgotPasswordScreen() {
     const [email, setEmail] = useState('');
-    const [isEmailValid, setIsEmailValid] = useState(true); // NOVO: Estado para feedback visual
+    const [isEmailValid, setIsEmailValid] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
     const handleEmailChange = (text: string) => {
         setEmail(text);
-        // Valida em tempo real após o usuário começar a digitar
         if (text.length > 0) {
             setIsEmailValid(validateEmail(text));
         } else {
-            setIsEmailValid(true); // Reseta para o estado normal se o campo estiver vazio
+            setIsEmailValid(true);
         }
-    };
+    };const handlePasswordReset = async () => {
+    if (!email || !validateEmail(email)) {
+        setIsEmailValid(false);
+        Alert.alert('E-mail Inválido', 'Por favor, insira um endereço de e-mail válido.');
+        return;
+    }
 
-    const handlePasswordReset = () => {
-        // ATUALIZADO: Adicionada a validação de formato
-        if (!email) {
-            Alert.alert('Campo Obrigatório', 'Por favor, insira seu e-mail.');
-            return;
-        }
-        if (!validateEmail(email)) {
-            Alert.alert('E-mail Inválido', 'Por favor, insira um endereço de e-mail válido.');
-            setIsEmailValid(false); // Garante que a borda fique vermelha
-            return;
-        }
+    setIsLoading(true);
 
-        // Lógica de recuperação de senha
+    try {
+        await api.postPublic('/auth/forgot-password', { email });
+
         Alert.alert(
             'E-mail Enviado!',
             `Se houver uma conta associada a ${email}, um e-mail com as instruções foi enviado.`,
             [{ text: 'OK', onPress: () => router.back() }],
             { cancelable: false }
         );
-    };
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
+        
+        // Trata o erro 404 (usuário não encontrado)
+        if (errorMessage.includes("Usuário não encontrado") || errorMessage.includes("não encontrado")) {
+            Alert.alert(
+                'E-mail não cadastrado',
+                'Não existe uma conta associada a este e-mail. Verifique se digitou corretamente.',
+                [{ text: 'OK' }]
+            );
+        } else {
+            // Outros erros
+            Alert.alert('Erro', errorMessage);
+        }
+        
+        console.log('❌ Erro:', errorMessage);
+
+    } finally {
+        setIsLoading(false);
+    }
+};
 
     return (
         <LinearGradient colors={['#eff6ff', '#dbeafe']} style={styles.container}>
@@ -66,28 +85,34 @@ export default function ForgotPasswordScreen() {
                                 <Input
                                     placeholder="Digite seu e-mail"
                                     value={email}
-                                    onChangeText={handleEmailChange} // ATUALIZADO
+                                    onChangeText={handleEmailChange}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
-                                    // ATUALIZADO: Estilo condicional para feedback visual
                                     style={!isEmailValid && styles.inputError}
+                                    editable={!isLoading}
                                 />
                                 {!isEmailValid && (
                                     <Text style={styles.errorText}>Formato de e-mail inválido</Text>
                                 )}
                             </View>
-                            <Button onPress={handlePasswordReset}>
-                                <Mail size={16} color="white" />
-                                Enviar
+                            
+                           
+                            <Button style={styles.button} onPress={handlePasswordReset} disabled={isLoading}>
+                                {isLoading ? (
+                                    <Loader2 size={18} color="white" className="animate-spin" />
+                                ) : (
+                                    <Mail size={18} color="white" />
+                                )}
+                                <Text style={styles.buttonText}>
+                                    {isLoading ? 'Enviando...' : 'Enviar'}
+                                </Text>
                             </Button>
                         </CardContent>
                     </Card>
-                    <Link href="/login" asChild>
-                        <TouchableOpacity style={styles.backButton}>
-                            <ArrowLeft size={16} color="#2563eb" />
-                            <Text style={styles.backButtonText}>Voltar para o Login</Text>
-                        </TouchableOpacity>
-                    </Link>
+                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()} disabled={isLoading}>
+                        <ArrowLeft size={16} color="#2563eb" />
+                        <Text style={styles.backButtonText}>Voltar para o Login</Text>
+                    </TouchableOpacity>
                 </View>
             </SafeAreaView>
         </LinearGradient>
@@ -101,7 +126,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: 16,
     },
-    card: { width: '100%' },
+    card: { 
+        width: '100%',
+        padding: 16,
+        backgroundColor: 'white'
+    },
     title: { textAlign: 'center' },
     subtitle: {
         textAlign: 'center',
@@ -109,15 +138,25 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     inputGroup: { gap: 8, marginBottom: 16 },
-    label: { color: '#374151', fontSize: 14 },
-    // NOVO: Estilos para feedback de erro
+    label: { color: '#374151', fontSize: 14, fontWeight: '500' },
     inputError: {
-        borderColor: '#ef4444', // Vermelho para erro
+        borderColor: '#ef4444',
     },
     errorText: {
         color: '#ef4444',
         fontSize: 12,
-        marginTop: 4,
+    },
+    // NOVO: Estilos para o botão e seu texto
+    button: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
     },
     backButton: {
         flexDirection: 'row',
@@ -129,6 +168,5 @@ const styles = StyleSheet.create({
     backButtonText: {
         color: '#2563eb',
         fontWeight: '600',
-        textDecorationLine: 'underline',
     },
 });

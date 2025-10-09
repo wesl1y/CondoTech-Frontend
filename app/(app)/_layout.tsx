@@ -48,19 +48,25 @@ function CustomDrawerContent(props: any) {
           <DrawerItem
             label="Moradores"
             icon={({ color, size }) => <Users color={color} size={size} />}
-            focused={isItemActive('/residents')} // <-- A MÁGICA ACONTECE AQUI
+            focused={isItemActive('/residents')} 
             onPress={() => router.push('/residents')}
           />
-        </>
-      )}
+      {/* <DrawerItem
+        label="Unidades"
+        icon={({ color, size }) => <Home color={color} size={size} />}
+        focused={isItemActive('/dashboard') || isItemActive('/notifications') || isItemActive('/reservations') || isItemActive('/issues') || isItemActive('/profile')}
+        onPress={() => router.push('/dashboard')}
+      /> */}
+
+      </>
+    )}
     </DrawerContentScrollView>
   );
-}
+}""
 
 export default function AppLayout() {
   return (
     <Drawer
-      // Usamos nosso componente customizado para renderizar o conteúdo do menu
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: true,

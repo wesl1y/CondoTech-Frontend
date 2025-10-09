@@ -1,23 +1,25 @@
 {
   "expo": {
-    "name": "CondoTech-Frontend",
-    "slug": "CondoTech-Frontend",
+    "name": "CondoTech",
+    "slug": "CondoTech",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "condotechfrontend",
+    "scheme": "condotech",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
-      // <-- ADICIONE ESTE BLOCO PARA O IOS
+      "bundleIdentifier": "com.condotech.app",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
-      }
+      },
+      "associatedDomains": ["applinks:seudominio.com"]
     },
     "android": {
+      "package": "com.condotech.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -26,8 +28,24 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      // <-- ADICIONE ESTA LINHA PARA O ANDROID
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "seudominio.com",
+              "pathPrefix": "/reset-password"
+            },
+            {
+              "scheme": "condotech"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",

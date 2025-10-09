@@ -31,6 +31,7 @@ interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'USER';
+  moradorId: number;
   phone: string;
   unit: string;
   tower: string;
@@ -53,18 +54,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // O resto da lógica (useEffect, signIn, signOut) permanece o mesmo
-  useEffect(() => {
+useEffect(() => {
     const loadUserFromToken = async () => {
       try {
         const token = await SecureStore.getItemAsync(TOKEN_KEY);
         if (token) {
           const decodedToken: DecodedToken = jwtDecode(token);
           const userData = await api.get(`/users/${decodedToken.id}`);
-          setUser(userData);
+
+          // --- MODIFICAÇÃO IMPORTANTE AQUI ---
+          // Verifique se o usuário retornado pela API é realmente válido
+          if (userData && userData.id) {
+            setUser(userData);
+          } else {
+            // Se a API retornou algo inválido (null, {}), trate como erro
+            throw new Error('Usuário não encontrado no servidor.');
+          }
+          // --- FIM DA MODIFICAÇÃO ---
         }
       } catch (e) {
-        console.error('Failed to load user session:', e);
+        console.error('Falha ao carregar sessão, limpando token:', e);
+        // O catch agora também será ativado se o userData for inválido
         await SecureStore.deleteItemAsync(TOKEN_KEY);
+        setUser(null); // Garante que o estado 'user' seja nulo em caso de erro
       } finally {
         setIsLoading(false);
       }

@@ -13,8 +13,9 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false); // NOVO: Estado de carregamento
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const { signIn } = useAuth();
+  
     const testApi = async () => {
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
@@ -37,8 +38,17 @@ export default function Login() {
   };
 
   const handleLogin = async () => {
+    // 1. Regex para validar o formato do e-mail
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!email || !password) {
       Alert.alert('Campos Obrigatórios', 'Por favor, preencha o e-mail e a senha.');
+      return;
+    }
+    
+    // 2. Adiciona a verificação com o regex
+    if (!emailRegex.test(email)) {
+      Alert.alert('E-mail Inválido', 'Por favor, digite um endereço de e-mail válido.');
       return;
     }
     
@@ -46,10 +56,9 @@ export default function Login() {
     try {
       await signIn(email, password); // Chama o signIn com a senha
     } catch (error) {
-      // O erro já é tratado e exibido pelo AuthContext,
-      // mas podemos fazer algo a mais aqui se necessário.
+    
     } finally {
-      setIsLoggingIn(false); // Finaliza o carregamento, independentemente do resultado
+      setIsLoggingIn(false); 
     }
   };
 
@@ -106,67 +115,68 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-    gap: 24,
-  },
-  
-  logoContainer: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  logoBackground: {
-    width: 64,
-    height: 64,
-    backgroundColor: '#2563eb',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e3a8a',
-  },
-  appSubtitle: {
-    color: '#4b5563',
-  },
-  loginCard: {
-    width: '100%',
-  },
-  // ---------------------------------------------------
-  inputGroup: {
-    gap: 8,
-  },
-  label: {
-    color: '#374151',
-    fontSize: 14,
-  },
-  passwordContainer: {
-    position: 'relative',
-    width: '100%',
-    justifyContent: 'center',
-  },
-  passwordInput: {
-    paddingRight: 48,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 12,
-    height: '100%',
-    justifyContent: 'center',
-  },
-  forgotPasswordContainer: {
-    alignItems: 'center',
-  },
-  forgotPasswordText: {
-    color: '#2563eb',
-    textDecorationLine: 'underline',
-  },
+  container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    gap: 24,
+  },
+  
+  logoContainer: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoBackground: {
+    width: 64,
+    height: 64,
+    backgroundColor: '#2563eb',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  appName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e3a8a',
+  },
+  appSubtitle: {
+    color: '#4b5563',
+  },
+  loginCard: {
+  padding: 16,
+    width: '100%',
+  },
+
+  inputGroup: {
+    gap: 8,
+  },
+  label: {
+    color: '#374151',
+    fontSize: 14,
+  },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+    justifyContent: 'center',
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    height: '100%',
+    justifyContent: 'center',
+  },
+  forgotPasswordContainer: {
+    alignItems: 'center',
+  },
+  forgotPasswordText: {
+    color: '#2563eb',
+    textDecorationLine: 'underline',
+  },
 });

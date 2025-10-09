@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Bell, Calendar, AlertTriangle, User, Users, BarChart3 } from 'lucide-react-native';
+import { AlertTriangle, Bell, Calendar, Home, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -13,20 +13,20 @@ export default function TabLayout() {
     >
       {/* Abas que APARECEM na barra inferior */}
       <Tabs.Screen name="dashboard/index" options={{ title: 'Dashboard', tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
-      <Tabs.Screen name="notifications" options={{ title: 'Avisos', tabBarIcon: ({ color, size }) => <Bell color={color} size={size} /> }} />
-      <Tabs.Screen name="reservations" options={{ title: 'Reservas', tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} /> }} />
-      <Tabs.Screen name="issues" options={{ title: 'Ocorrências', tabBarIcon: ({ color, size }) => <AlertTriangle color={color} size={size} /> }} />
-      <Tabs.Screen name="profile" options={{ title: 'Perfil', tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
+      <Tabs.Screen name="notifications/index" options={{ title: 'Avisos', tabBarIcon: ({ color, size }) => <Bell color={color} size={size} /> }} />
+      <Tabs.Screen name="reservations/index" options={{ title: 'Reservas', tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} /> }} />
+      <Tabs.Screen name="issues/index" options={{ title: 'Ocorrências', tabBarIcon: ({ color, size }) => <AlertTriangle color={color} size={size} /> }} />
+      <Tabs.Screen name="profile/index" options={{ title: 'Perfil', tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
       
       {/* Telas que existem DENTRO da navegação por abas, mas ficam ESCONDIDAS da barra inferior */}
       <Tabs.Screen
-        name="residents"
+        name="residents/index"
         options={{
           href: null, // Esconde esta tela da barra de abas
         }}
       />
       <Tabs.Screen
-        name="reports"
+        name="reports/index"
         options={{
           href: null, // Esconde esta tela da barra de abas
         }}
