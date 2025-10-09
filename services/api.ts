@@ -25,29 +25,28 @@ const createHeaders = async () => {
 
 /**
  * Uma função genérica para lidar com as respostas da API.
- */
-const handleResponse = async (response: Response) => {
+ */const handleResponse = async (response: Response) => {
   // Se o status da resposta for 401, significa que o token é inválido ou expirou.
   if (response.status === 401) {
     console.log("Token expirado ou inválido. Limpando sessão...");
-
-    // 2. Remove o token inválido do armazenamento seguro.
     await SecureStore.deleteItemAsync(TOKEN_KEY);
-
-    // 3. Força o aplicativo a recarregar completamente.
-    // Ao recarregar, a lógica de autenticação no seu app/_layout.tsx será
-    // executada novamente. Como não haverá mais token, o usuário será
-    // redirecionado para a tela de login.
     await Updates.reloadAsync();
-
-    // Lança um erro para que a execução atual pare.
     throw new Error("Sua sessão expirou. Você foi desconectado.");
   }
+  
   if (!response.ok) {
-    // Tenta pegar uma mensagem de erro do corpo da resposta, se houver
-    const errorData = await response.json().catch(() => null);
-    const errorMessage = errorData?.message || `Erro: ${response.status} ${response.statusText}`;
-    throw new Error(errorMessage);
+    // Pega o texto da resposta primeiro
+    const errorText = await response.text();
+    
+    // Tenta parsear como JSON
+    try {
+      const errorData = JSON.parse(errorText);
+      const errorMessage = errorData?.message || errorText || `Erro: ${response.status} ${response.statusText}`;
+      throw new Error(errorMessage);
+    } catch (e) {
+      // Se não for JSON válido, usa o texto mesmo ou a mensagem padrão
+      throw new Error(errorText || `Erro: ${response.status} ${response.statusText}`);
+    }
   }
   
   // Retorna null para respostas sem conteúdo (como um DELETE bem-sucedido)
@@ -55,7 +54,21 @@ const handleResponse = async (response: Response) => {
     return null;
   }
   
-  return response.json();
+  // Pega o texto da resposta
+  const responseText = await response.text();
+  
+  // Se estiver vazio, retorna null
+  if (!responseText) {
+    return null;
+  }
+  
+  // Tenta parsear como JSON
+  try {
+    return JSON.parse(responseText);
+  } catch (e) {
+    // Se não for JSON, retorna o texto
+    return responseText;
+  }
 };
 
 // Nosso cliente de API completo
@@ -115,6 +128,21 @@ const api = {
     });
     return handleResponse(response);
   },
+
+   postPublic: async (endpoint: string, body: unknown) => {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    return handleResponse(response);
+  },
+  
 };
+
+
+
 
 export default api;
