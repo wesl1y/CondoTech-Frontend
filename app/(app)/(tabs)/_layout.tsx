@@ -31,6 +31,9 @@ export default function TabLayout() {
           href: null, // Esconde esta tela da barra de abas
         }}
       />
+      <Tabs.Screen name="manage-reservations/index" options={{ href: null }} />
     </Tabs>
+
+    
   );
 }

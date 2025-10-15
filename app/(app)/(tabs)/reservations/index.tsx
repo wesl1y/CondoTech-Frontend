@@ -1,4 +1,4 @@
-// Location: app/(app)/(tabs)/reservations.tsx
+// Location: app/(app)/(tabs)/reservations/index.tsx
 
 import { Picker } from '@react-native-picker/picker';
 import { Calendar as CalendarIcon, Clock, MapPin, Plus, X, Home, Flame, Waves } from 'lucide-react-native';

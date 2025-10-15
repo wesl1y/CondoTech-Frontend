@@ -139,6 +139,37 @@ const api = {
     });
     return handleResponse(response);
   },
+  /**
+ * Realiza upload de arquivo com FormData (multipart/form-data)
+ * @param endpoint O endpoint da API
+ * @param formData O FormData com os arquivos
+ */
+postFormData: async (endpoint: string, formData: FormData) => {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    ...(token && { Authorization: `Bearer ${token}` }),
+    // NÃO definir Content-Type para FormData - o browser define automaticamente com boundary
+  };
+  
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  return handleResponse(response);
+},
+
+/**
+ * Realiza DELETE com autenticação
+ */
+deleteAuth: async (endpoint: string) => {
+  const headers = await createHeaders();
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: 'DELETE',
+    headers,
+  });
+  return handleResponse(response);
+},
   
 };
 

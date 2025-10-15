@@ -2,7 +2,7 @@ import React from 'react';
 import { Drawer } from 'expo-router/drawer';
 import { useAuth } from '../../context/AuthContext';
 import { View, Text, StyleSheet } from 'react-native';
-import { Building2, Home, Users, BarChart3 } from 'lucide-react-native';
+import { Building2, Home, Users, BarChart3, Grid3X3 } from 'lucide-react-native';
 // --- IMPORTS ADICIONAIS ---
 import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { useRouter, usePathname } from 'expo-router';
@@ -51,18 +51,16 @@ function CustomDrawerContent(props: any) {
             focused={isItemActive('/residents')} 
             onPress={() => router.push('/residents')}
           />
-      {/* <DrawerItem
-        label="Unidades"
-        icon={({ color, size }) => <Home color={color} size={size} />}
-        focused={isItemActive('/dashboard') || isItemActive('/notifications') || isItemActive('/reservations') || isItemActive('/issues') || isItemActive('/profile')}
-        onPress={() => router.push('/dashboard')}
-      /> */}
-
-      </>
+         <DrawerItem
+          label="Gerenciar Áreas"
+           icon={({ color, size }) => <Grid3X3 color={color} size={size} />}
+          focused={isItemActive('/manage-reservations')} 
+          onPress={() => router.push('/manage-reservations')} />
+          </>
     )}
     </DrawerContentScrollView>
   );
-}""
+}
 
 export default function AppLayout() {
   return (
