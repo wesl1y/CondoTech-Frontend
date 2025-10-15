@@ -40,9 +40,10 @@ interface User {
 }
 
 interface AuthContextData {
+  user: User | null;
+  token: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
-  user: User | null;
   isLoading: boolean;
 }
 
@@ -51,38 +52,39 @@ const TOKEN_KEY = 'my-jwt';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // O resto da lógica (useEffect, signIn, signOut) permanece o mesmo
-useEffect(() => {
-    const loadUserFromToken = async () => {
-      try {
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
-        if (token) {
-          const decodedToken: DecodedToken = jwtDecode(token);
-          const userData = await api.get(`/users/${decodedToken.id}`);
+// DENTRO DE AuthContext.tsx
 
-          // --- MODIFICAÇÃO IMPORTANTE AQUI ---
-          // Verifique se o usuário retornado pela API é realmente válido
-          if (userData && userData.id) {
-            setUser(userData);
-          } else {
-            // Se a API retornou algo inválido (null, {}), trate como erro
-            throw new Error('Usuário não encontrado no servidor.');
-          }
-          // --- FIM DA MODIFICAÇÃO ---
+useEffect(() => {
+  const loadUserFromToken = async () => {
+    try {
+      const storedToken = await SecureStore.getItemAsync(TOKEN_KEY); // Renomeei para 'storedToken' para clareza
+      if (storedToken) {
+        
+        setToken(storedToken); // Define o token no estado ao carregar
+
+        const decodedToken: DecodedToken = jwtDecode(storedToken);
+        const userData = await api.get(`/users/${decodedToken.id}`);
+
+        if (userData && userData.id) {
+          setUser(userData);
+        } else {
+          throw new Error('Usuário não encontrado no servidor.');
         }
-      } catch (e) {
-        console.error('Falha ao carregar sessão, limpando token:', e);
-        // O catch agora também será ativado se o userData for inválido
-        await SecureStore.deleteItemAsync(TOKEN_KEY);
-        setUser(null); // Garante que o estado 'user' seja nulo em caso de erro
-      } finally {
-        setIsLoading(false);
       }
-    };
-    loadUserFromToken();
-  }, []);
+    } catch (e) {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      setUser(null);
+      setToken(null); // Limpa o token do estado também
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  loadUserFromToken();
+}, []);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -97,18 +99,18 @@ useEffect(() => {
       if (!token) throw new Error('Token não recebido do servidor');
       
       await SecureStore.setItemAsync(TOKEN_KEY, token);
+      setToken(token); 
 
       const decodedToken: DecodedToken = jwtDecode(token);
       const userData = await api.get(`/users/${decodedToken.id}`);
       setUser(userData);
-      
+
       router.replace('/(app)/(tabs)/dashboard');
 
     } catch (error) {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       let errorMessage = 'Ocorreu um erro desconhecido.';
       if (error instanceof Error) errorMessage = error.message;
-      console.error('Login failed:', error);
       alert(errorMessage);
       throw new Error(errorMessage);
     }
@@ -126,7 +128,7 @@ useEffect(() => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, token, isLoading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

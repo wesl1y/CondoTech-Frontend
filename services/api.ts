@@ -116,6 +116,24 @@ const api = {
     return handleResponse(response);
   },
 
+
+  // ✨ ADICIONE ESTE MÉTODO AQUI ✨
+  /**
+   * Realiza uma requisição PATCH para atualizações parciais.
+   * @param endpoint O endpoint da API (ex: '/users/1')
+   * @param body O corpo da requisição com os campos a serem atualizados.
+   */
+  patch: async (endpoint: string, body?: unknown) => {
+    const headers = await createHeaders();
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'PATCH', // A única diferença principal é aqui
+      headers,
+      body: JSON.stringify(body),
+    });
+    return handleResponse(response);
+  },
+
+
   /**
    * Realiza uma requisição DELETE.
    * @param endpoint O endpoint da API (ex: '/users/1')
