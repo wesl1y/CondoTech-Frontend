@@ -9,11 +9,10 @@ export interface UnidadeDTO {
 }
 
 export class UnidadeService {
-  private static BASE_PATH = '/unidades'; // <-- Confirme se este é o endpoint correto no seu backend
+  private static BASE_PATH = '/unidades';
 
   /**
    * Buscar todas as unidades
-   * GET /unidades
    */
   static async findAll(): Promise<UnidadeDTO[]> {
     try {
