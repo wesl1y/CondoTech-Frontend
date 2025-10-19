@@ -46,10 +46,11 @@ export default function IssuesScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchTipo, setSearchTipo] = useState<string>('');
     
-    // Refs - Evita memory leaks e race conditions
+    // Refs - Controle de race conditions e memory leaks
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = useRef(true);
-    const loadRequestIdRef = useRef(0); // ← NOVO: Controla qual requisição é mais recente
+    const loadRequestIdRef = useRef(0); // Controla qual requisição é mais recente
+    const onEndReachedCalledDuringMomentum = useRef(true); // Previne chamadas múltiplas do onEndReached
     
     const tabs = ['Todas', 'Pendente', 'Em andamento', 'Resolvida', 'Canceladas'];
 
@@ -61,7 +62,7 @@ export default function IssuesScreen() {
         };
     }, []);
 
-    // Carrega contadores - mantido igual
+    // Carrega contadores - função estável
     const loadCounters = useCallback(async () => {
         if (!user || !isMountedRef.current) return;
         
@@ -135,32 +136,24 @@ export default function IssuesScreen() {
         }
     }, [user, isAdmin]);
 
-    // Carrega dados quando screen entra em foco
-    useFocusEffect(
-        useCallback(() => {
-            if (user) {
-                loadCounters();
-                loadIssues(0, false);
-            }
-        }, [user]) // ← CORRIGIDO: Removido loadCounters da dependência
-    );
-    
-    // FUNÇÃO PRINCIPAL CORRIGIDA
+    // FUNÇÃO PRINCIPAL - Estável, não depende de estados mutáveis
     const loadIssues = useCallback(async (
-        page: number = 0, 
-        append: boolean = false, 
-        query: string = searchQuery, // ← Usa valores atuais do estado
-        tipo: string = searchTipo,
-        tab: string = activeTab // ← NOVO: Recebe tab como parâmetro
+        page: number, 
+        append: boolean, 
+        query: string, 
+        tipo: string,
+        tab: string
     ) => {
         if (!user || !isMountedRef.current) return;
         
-        // ← NOVO: Incrementa ID da requisição
+        // Incrementa ID da requisição para detectar race conditions
         const requestId = ++loadRequestIdRef.current;
         
+        console.log('🔍 loadIssues chamado:', { page, append, query, tipo, tab, requestId });
+        
         if (page === 0) { 
-            setLoading(true); 
-            // ← NOVO: Limpa arrays imediatamente ao trocar de aba
+            setLoading(true);
+            // Limpa arrays imediatamente ao trocar de aba
             if (!append) {
                 if (tab === 'Canceladas') {
                     setCancelledIssues([]);
@@ -183,6 +176,8 @@ export default function IssuesScreen() {
             };
             const statusParam = getStatusParam();
 
+            console.log('📡 Fazendo requisição:', { statusParam, query, tipo, page, isAdmin, moradorId: user.moradorId });
+
             let responseData;
             if (isAdmin) {
                 responseData = await ocorrenciaService.search(
@@ -203,9 +198,19 @@ export default function IssuesScreen() {
                 );
             }
             
-            // ← NOVO: Verifica se esta ainda é a requisição mais recente
+            console.log('📦 Resposta recebida:', { 
+                ocorrencias: responseData?.ocorrencias?.length, 
+                totalItems: responseData?.totalItems,
+                hasMore: responseData?.hasMore,
+                requestId,
+                currentRequestId: loadRequestIdRef.current
+            });
+            
+            // CRÍTICO: Só atualiza estado se esta é a requisição mais recente
             if (responseData && isMountedRef.current && requestId === loadRequestIdRef.current) {
                 const targetArraySetter = tab === 'Canceladas' ? setCancelledIssues : setAllIssues;
+                
+                console.log('✅ Atualizando estado - requestId válido');
                 
                 if (append) {
                     targetArraySetter(prev => [
@@ -219,6 +224,12 @@ export default function IssuesScreen() {
                 }
                 setHasMore(responseData.hasMore);
                 setCurrentPage(page);
+            } else {
+                console.log('❌ Estado NÃO atualizado:', {
+                    hasResponseData: !!responseData,
+                    isMounted: isMountedRef.current,
+                    requestIdMatch: requestId === loadRequestIdRef.current
+                });
             }
         } catch (error) {
             console.error('Erro ao carregar ocorrências:', error);
@@ -232,20 +243,31 @@ export default function IssuesScreen() {
                 setIsSearching(false);
             }
         }
-    }, [user, isAdmin, searchQuery, searchTipo, activeTab]); // ← Dependências corretas
+    }, [user, isAdmin]); // Apenas dependências estáveis
 
-    // ← NOVO: useEffect separado para mudança de aba
+    // Carrega dados quando screen entra em foco
+    useFocusEffect(
+        useCallback(() => {
+            if (user) {
+                loadCounters();
+                // Não chama loadIssues aqui - deixa o useEffect abaixo gerenciar
+            }
+        }, [user, loadCounters])
+    );
+
+    // Monitora mudança de aba - reseta paginação
     useEffect(() => {
         if (!user) return;
         
-        // Reseta paginação e carrega nova aba
         setCurrentPage(0);
         setHasMore(true);
         loadIssues(0, false, searchQuery, searchTipo, activeTab);
-    }, [activeTab]); // ← Só dispara quando a aba muda
+    }, [activeTab, loadIssues]); // Dispara quando aba muda OU loadIssues é recriado
 
-    // Debounce de busca - CORRIGIDO
+    // Debounce de busca
     useEffect(() => {
+        if (!user) return;
+        
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current);
         }
@@ -258,16 +280,23 @@ export default function IssuesScreen() {
                 loadIssues(0, false, searchQuery, searchTipo, activeTab);
             }, 500);
         } else {
+            // Query vazia - deixa o useEffect de activeTab/searchTipo gerenciar
             setIsSearching(false);
-            setCurrentPage(0);
-            setHasMore(true);
-            loadIssues(0, false, '', searchTipo, activeTab);
         }
 
         return () => {
             if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         }
-    }, [searchQuery, searchTipo]); // ← CORRIGIDO: Removido activeTab e loadIssues
+    }, [searchQuery]); // Apenas searchQuery
+
+    // Monitora mudança de filtro de tipo
+    useEffect(() => {
+        if (!user) return;
+        
+        setCurrentPage(0);
+        setHasMore(true);
+        loadIssues(0, false, searchQuery, searchTipo, activeTab);
+    }, [searchTipo, loadIssues]); // Dispara quando filtro de tipo muda
 
     // Refresh completo
     const handleRefresh = useCallback(() => {
@@ -276,8 +305,8 @@ export default function IssuesScreen() {
         setSearchQuery('');
         setSearchTipo('');
         loadCounters();
-        loadIssues(0, false, '', '', activeTab); // ← Passa activeTab explicitamente
-    }, [loadCounters, activeTab]); // ← Removido loadIssues
+        loadIssues(0, false, '', '', activeTab);
+    }, [loadCounters, loadIssues, activeTab]);
 
     // Retorna contador do status selecionado
     const getStatusCount = (status: string) => {
@@ -422,12 +451,24 @@ export default function IssuesScreen() {
                     ) : null
                 }
                 ListFooterComponent={renderFooter}
-                onEndReached={() => { 
-                    if (!loadingMore && hasMore) { 
-                        loadIssues(currentPage + 1, true, searchQuery, searchTipo, activeTab); 
+                onEndReached={() => {
+                    // Previne múltiplas chamadas durante scroll momentum
+                    if (onEndReachedCalledDuringMomentum.current) {
+                        return;
+                    }
+                    // Só carrega mais se não estiver já carregando, tiver mais itens E já tiver conteúdo na lista
+                    if (!loadingMore && !loading && hasMore && issuesToDisplay.length > 0) { 
+                        console.log('📄 Carregando próxima página:', currentPage + 1);
+                        loadIssues(currentPage + 1, true, searchQuery, searchTipo, activeTab);
                     }
                 }}
-                onEndReachedThreshold={0.5}
+                onEndReachedThreshold={0.3}
+                onMomentumScrollBegin={() => {
+                    onEndReachedCalledDuringMomentum.current = false;
+                }}
+                onMomentumScrollEnd={() => {
+                    onEndReachedCalledDuringMomentum.current = true;
+                }}
                 refreshing={loading}
                 onRefresh={handleRefresh}
             />
