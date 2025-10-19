@@ -149,7 +149,6 @@ export default function IssuesScreen() {
         // Incrementa ID da requisição para detectar race conditions
         const requestId = ++loadRequestIdRef.current;
         
-        console.log('🔍 loadIssues chamado:', { page, append, query, tipo, tab, requestId });
         
         if (page === 0) { 
             setLoading(true);
@@ -176,7 +175,7 @@ export default function IssuesScreen() {
             };
             const statusParam = getStatusParam();
 
-            console.log('📡 Fazendo requisição:', { statusParam, query, tipo, page, isAdmin, moradorId: user.moradorId });
+          
 
             let responseData;
             if (isAdmin) {
@@ -198,19 +197,13 @@ export default function IssuesScreen() {
                 );
             }
             
-            console.log('📦 Resposta recebida:', { 
-                ocorrencias: responseData?.ocorrencias?.length, 
-                totalItems: responseData?.totalItems,
-                hasMore: responseData?.hasMore,
-                requestId,
-                currentRequestId: loadRequestIdRef.current
-            });
+
             
             // CRÍTICO: Só atualiza estado se esta é a requisição mais recente
             if (responseData && isMountedRef.current && requestId === loadRequestIdRef.current) {
                 const targetArraySetter = tab === 'Canceladas' ? setCancelledIssues : setAllIssues;
                 
-                console.log('✅ Atualizando estado - requestId válido');
+         
                 
                 if (append) {
                     targetArraySetter(prev => [
