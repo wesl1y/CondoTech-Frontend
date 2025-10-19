@@ -13,8 +13,6 @@ import { issueTypes } from '../../../../components/issues/issues.constants';
 import { NewIssueModal } from '../../../../components/issues/NewIssueModal';
 import { styles } from '../../../../styles/issues/_styles';
 
-
-
 export default function IssuesScreen() {
     const { user } = useAuth();
     const isAdmin = user?.role === 'ADMIN';
@@ -48,14 +46,14 @@ export default function IssuesScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchTipo, setSearchTipo] = useState<string>('');
     
-    // Refs - Evita memory leaks e crashes ao desmontar
-    const activeTabRef = useRef(activeTab);
+    // Refs - Evita memory leaks e race conditions
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = useRef(true);
+    const loadRequestIdRef = useRef(0); // ← NOVO: Controla qual requisição é mais recente
     
     const tabs = ['Todas', 'Pendente', 'Em andamento', 'Resolvida', 'Canceladas'];
 
-    // Cleanup ao desmontar - previne setState em component unmounted
+    // Cleanup ao desmontar
     useEffect(() => {
         return () => {
             isMountedRef.current = false;
@@ -63,8 +61,7 @@ export default function IssuesScreen() {
         };
     }, []);
 
-    // Carrega contadores de cada status com requisições isoladas
-    // Cada status tem seu próprio try-catch para evitar crash em cadeia
+    // Carrega contadores - mantido igual
     const loadCounters = useCallback(async () => {
         if (!user || !isMountedRef.current) return;
         
@@ -81,7 +78,7 @@ export default function IssuesScreen() {
                 try {
                     const data = await ocorrenciaService.search('', undefined, undefined, 0, 1);
                     newCounts.todas = data?.totalItems || 0;
-                } catch (e) { /* requisição falhou, mantém valor padrão */ }
+                } catch (e) { /* requisição falhou */ }
 
                 try {
                     const data = await ocorrenciaService.search('', 'ABERTA', undefined, 0, 1);
@@ -138,36 +135,50 @@ export default function IssuesScreen() {
         }
     }, [user, isAdmin]);
 
-    // Sincroniza ref com estado para usar valores corretos dentro de callbacks async
-    useEffect(() => {
-        activeTabRef.current = activeTab;
-    }, [activeTab]);
-
-    // Carrega dados quando screen entra em foco (voltar de outras abas/screens)
+    // Carrega dados quando screen entra em foco
     useFocusEffect(
         useCallback(() => {
             if (user) {
                 loadCounters();
                 loadIssues(0, false);
             }
-        }, [loadCounters, user])
+        }, [user]) // ← CORRIGIDO: Removido loadCounters da dependência
     );
     
-    // Carrega lista de ocorrências com suporte a paginação infinita
-    const loadIssues = useCallback(async (page: number = 0, append: boolean = false, query: string = '', tipo: string = '') => {
+    // FUNÇÃO PRINCIPAL CORRIGIDA
+    const loadIssues = useCallback(async (
+        page: number = 0, 
+        append: boolean = false, 
+        query: string = searchQuery, // ← Usa valores atuais do estado
+        tipo: string = searchTipo,
+        tab: string = activeTab // ← NOVO: Recebe tab como parâmetro
+    ) => {
         if (!user || !isMountedRef.current) return;
         
-        const currentTab = activeTabRef.current;
-        if (page === 0) { setLoading(true); } else { setLoadingMore(true); }
+        // ← NOVO: Incrementa ID da requisição
+        const requestId = ++loadRequestIdRef.current;
+        
+        if (page === 0) { 
+            setLoading(true); 
+            // ← NOVO: Limpa arrays imediatamente ao trocar de aba
+            if (!append) {
+                if (tab === 'Canceladas') {
+                    setCancelledIssues([]);
+                } else {
+                    setAllIssues([]);
+                }
+            }
+        } else { 
+            setLoadingMore(true); 
+        }
         
         try {
-            // Mapeia nome visual da tab para status da API
             const getStatusParam = () => {
-                if (currentTab === 'Todas') return undefined;
-                if (currentTab === 'Canceladas') return 'CANCELADA';
-                if (currentTab === 'Pendente') return 'ABERTA';
-                if (currentTab === 'Em andamento') return 'EM_ANDAMENTO';
-                if (currentTab === 'Resolvida') return 'RESOLVIDA';
+                if (tab === 'Todas') return undefined;
+                if (tab === 'Canceladas') return 'CANCELADA';
+                if (tab === 'Pendente') return 'ABERTA';
+                if (tab === 'Em andamento') return 'EM_ANDAMENTO';
+                if (tab === 'Resolvida') return 'RESOLVIDA';
                 return undefined;
             };
             const statusParam = getStatusParam();
@@ -192,11 +203,11 @@ export default function IssuesScreen() {
                 );
             }
             
-            if (responseData && isMountedRef.current) {
-                const targetArraySetter = currentTab === 'Canceladas' ? setCancelledIssues : setAllIssues;
+            // ← NOVO: Verifica se esta ainda é a requisição mais recente
+            if (responseData && isMountedRef.current && requestId === loadRequestIdRef.current) {
+                const targetArraySetter = tab === 'Canceladas' ? setCancelledIssues : setAllIssues;
                 
                 if (append) {
-                    // Append com deduplicação por ID para evitar duplicatas
                     targetArraySetter(prev => [
                         ...prev, 
                         ...responseData.ocorrencias.filter(
@@ -211,19 +222,29 @@ export default function IssuesScreen() {
             }
         } catch (error) {
             console.error('Erro ao carregar ocorrências:', error);
-            if (isMountedRef.current) {
+            if (isMountedRef.current && requestId === loadRequestIdRef.current) {
                 Alert.alert('Erro', 'Não foi possível carregar as ocorrências');
             }
         } finally {
-            if (isMountedRef.current) {
+            if (isMountedRef.current && requestId === loadRequestIdRef.current) {
                 setLoading(false);
                 setLoadingMore(false);
                 setIsSearching(false);
             }
         }
-    }, [user, isAdmin]);
+    }, [user, isAdmin, searchQuery, searchTipo, activeTab]); // ← Dependências corretas
 
-    // Debounce de busca - espera 500ms após usuário parar de digitar para fazer requisição
+    // ← NOVO: useEffect separado para mudança de aba
+    useEffect(() => {
+        if (!user) return;
+        
+        // Reseta paginação e carrega nova aba
+        setCurrentPage(0);
+        setHasMore(true);
+        loadIssues(0, false, searchQuery, searchTipo, activeTab);
+    }, [activeTab]); // ← Só dispara quando a aba muda
+
+    // Debounce de busca - CORRIGIDO
     useEffect(() => {
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current);
@@ -234,28 +255,29 @@ export default function IssuesScreen() {
             searchTimeoutRef.current = setTimeout(() => {
                 setCurrentPage(0);
                 setHasMore(true);
-                loadIssues(0, false, searchQuery, searchTipo);
+                loadIssues(0, false, searchQuery, searchTipo, activeTab);
             }, 500);
         } else {
             setIsSearching(false);
-            if (searchTipo) setSearchTipo('');
-            loadIssues(0, false);
+            setCurrentPage(0);
+            setHasMore(true);
+            loadIssues(0, false, '', searchTipo, activeTab);
         }
 
         return () => {
             if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         }
-    }, [searchQuery, searchTipo, activeTab, loadIssues]);
+    }, [searchQuery, searchTipo]); // ← CORRIGIDO: Removido activeTab e loadIssues
 
-    // Refresh completo - limpa filtros e recarrega tudo
+    // Refresh completo
     const handleRefresh = useCallback(() => {
         setCurrentPage(0);
         setHasMore(true);
         setSearchQuery('');
         setSearchTipo('');
         loadCounters();
-        loadIssues(0, false);
-    }, [loadCounters, loadIssues]);
+        loadIssues(0, false, '', '', activeTab); // ← Passa activeTab explicitamente
+    }, [loadCounters, activeTab]); // ← Removido loadIssues
 
     // Retorna contador do status selecionado
     const getStatusCount = (status: string) => {
@@ -271,7 +293,6 @@ export default function IssuesScreen() {
 
     const issuesToDisplay = activeTab === 'Canceladas' ? cancelledIssues : allIssues;
     
-    // Footer da FlatList ao carregar mais itens
     const renderFooter = () => {
         if (!loadingMore) return null;
         return (
@@ -401,7 +422,11 @@ export default function IssuesScreen() {
                     ) : null
                 }
                 ListFooterComponent={renderFooter}
-                onEndReached={() => { if (!loadingMore && hasMore) { loadIssues(currentPage + 1, true, searchQuery, searchTipo); }}}
+                onEndReached={() => { 
+                    if (!loadingMore && hasMore) { 
+                        loadIssues(currentPage + 1, true, searchQuery, searchTipo, activeTab); 
+                    }
+                }}
                 onEndReachedThreshold={0.5}
                 refreshing={loading}
                 onRefresh={handleRefresh}
