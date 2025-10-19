@@ -34,7 +34,7 @@ export const NewIssueModal = ({ visible, onClose, onSuccess }: NewIssueModalProp
             Alert.alert('Permissão necessária', 'É necessário permitir acesso à galeria');
             return;
         }
-        const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+        const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.8 });
         if (!result.canceled) setImage(result.assets[0]);
     };
 
@@ -44,7 +44,7 @@ export const NewIssueModal = ({ visible, onClose, onSuccess }: NewIssueModalProp
             Alert.alert('Permissão necessária', 'É necessário permitir acesso à câmera');
             return;
         }
-        const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+        const result = await ImagePicker.launchCameraAsync({ allowsEditing: true,  quality: 0.8 });
         if (!result.canceled) setImage(result.assets[0]);
     };
 
