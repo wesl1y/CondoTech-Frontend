@@ -1,17 +1,17 @@
 // src/app/(tabs)/issues/components/NewIssueModal.tsx
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Image, Alert, ActivityIndicator, Platform, Dimensions, KeyboardAvoidingView } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import * as ImagePicker from 'expo-image-picker';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { Ocorrencia, ocorrenciaService } from '@/services/ocorrenciaService';
-import { styles } from '../styles';
+import { Picker } from '@react-native-picker/picker';
+import * as ImagePicker from 'expo-image-picker';
 import { Camera } from 'lucide-react-native';
-import { issueTypes } from '../issues.constants';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { styles } from '../../styles/issues/_styles';
+import { issueTypes } from './issues.constants';
 
 interface NewIssueModalProps {
     visible: boolean;

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Dimensions, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Download } from 'lucide-react-native';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { styles } from './styles';
+import { styles } from '../../../../styles/reports/styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- MOCK DATA ---
 const reservationsData = {

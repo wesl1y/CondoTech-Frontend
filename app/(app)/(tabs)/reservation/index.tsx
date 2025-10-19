@@ -9,7 +9,7 @@ import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent } from '../../../../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/Dialog';
-import { styles } from './styles';
+import { styles } from '../../../../styles/reservation/styles';
 
 // Setup for react-native-calendars in Portuguese
 LocaleConfig.locales['pt-br'] = {

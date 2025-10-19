@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../../../context/AuthContext';
 import { Badge } from '../../../../components/ui/badge';
 import { Switch } from '../../../../components/ui/Switch';
 import { User, Mail, MapPin, Car, Shield, Bell, LogOut, Key, Settings, ChevronRight } from 'lucide-react-native';
-import { styles } from './styles';
+import { styles } from '../../../../styles/profile/styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 type InfoCardProps = {
   title: string;
   icon: React.ReactNode;

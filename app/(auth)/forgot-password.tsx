@@ -7,7 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Loader2, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // ATUALIZADO: 'Text' já está aqui
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // ATUALIZADO: 'Text' já está aqui
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const validateEmail = (email: string) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

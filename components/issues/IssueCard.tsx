@@ -1,12 +1,12 @@
 // src/app/(tabs)/issues/components/IssueCard.tsx
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Ocorrencia } from '@/services/ocorrenciaService';
-import { styles } from '../styles';
 import { AlertTriangle, CheckCircle2, Clock, ImageIcon, XCircle } from 'lucide-react-native';
-import { statusMap } from '../issues.constants';
+import React from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { styles } from '../../styles/issues/_styles';
+import { statusMap } from './issues.constants';
 
 interface IssueCardProps {
     issue: Ocorrencia;

@@ -1,8 +1,9 @@
 // Localização: components/ui/Dialog.tsx
 
 import React from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { X } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface DialogProps {
   open: boolean;

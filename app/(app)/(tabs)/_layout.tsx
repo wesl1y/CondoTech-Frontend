@@ -13,25 +13,31 @@ export default function TabLayout() {
     >
       {/* Abas que APARECEM na barra inferior */}
       <Tabs.Screen name="dashboard/index" options={{ title: 'Dashboard', tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
-      <Tabs.Screen name="notifications/index" options={{ title: 'Avisos', tabBarIcon: ({ color, size }) => <Bell color={color} size={size} /> }} />
-      <Tabs.Screen name="reservations/index" options={{ title: 'Reservas', tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} /> }} />
+      <Tabs.Screen name="notification/index" options={{ title: 'Avisos', tabBarIcon: ({ color, size }) => <Bell color={color} size={size} /> }} />
+      <Tabs.Screen name="reservation/index" options={{ title: 'Reservas', tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} /> }} />
       <Tabs.Screen name="issues/index" options={{ title: 'Ocorrências', tabBarIcon: ({ color, size }) => <AlertTriangle color={color} size={size} /> }} />
       <Tabs.Screen name="profile/index" options={{ title: 'Perfil', tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
       
       {/* Telas que existem DENTRO da navegação por abas, mas ficam ESCONDIDAS da barra inferior */}
       <Tabs.Screen
-        name="residents/index"
+        name="resident/index"
         options={{
           href: null, // Esconde esta tela da barra de abas
         }}
       />
       <Tabs.Screen
-        name="reports/index"
+        name="report/index"
         options={{
           href: null, // Esconde esta tela da barra de abas
         }}
       />
-      <Tabs.Screen name="manage-reservations/index" options={{ href: null }} />
+      <Tabs.Screen
+        name="commom-area/index"
+        options={{
+          href: null, // Esconde esta tela da barra de abas
+        }}
+      />   
+      
     </Tabs>
 
     

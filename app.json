@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "condotech",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.condotech.app",
@@ -16,7 +16,9 @@
           "NSAllowsArbitraryLoads": true
         }
       },
-      "associatedDomains": ["applinks:seudominio.com"]
+      "associatedDomains": [
+        "applinks:seudominio.com"
+      ]
     },
     "android": {
       "package": "com.condotech.app",
@@ -43,7 +45,10 @@
               "scheme": "condotech"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -70,6 +75,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "39f8defd-9656-466a-a394-2326a65173cc"
+      }
     }
   }
 }

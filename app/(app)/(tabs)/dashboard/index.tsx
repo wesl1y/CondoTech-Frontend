@@ -8,8 +8,10 @@ import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
 import { AlertTriangle, BarChart3, Bell, Calendar, MapPin, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
-import { colors, styles } from './styles'; // Certifique-se que colors está exportado em styles.ts
+import { ActivityIndicator, RefreshControl, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+
+import { colors, styles } from '../../../../styles/dashboard/_styles'; // Certifique-se que colors está exportado em styles.ts
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Define o tipo para as props do StatCard, necessário para o componente auxiliar
 type StatCardProps = {
@@ -145,7 +147,7 @@ export default function DashboardScreen() {
                 <View style={styles.quickStatsGrid}>
                     <TouchableOpacity 
                         style={styles.statCardWrapper}
-                        onPress={() => router.push('/notifications')}
+                        onPress={() => router.push('/notification')}
                     >
                         <StatCard 
                             icon={<Bell color="#2563eb" />} 
@@ -157,7 +159,7 @@ export default function DashboardScreen() {
                     
                     <TouchableOpacity 
                         style={styles.statCardWrapper}
-                        onPress={() => router.push('/reservations')}
+                        onPress={() => router.push('/reservation')}
                     >
                         <StatCard 
                             icon={<Calendar color="#16a34a" />} 
@@ -182,7 +184,7 @@ export default function DashboardScreen() {
                     {isAdmin && (
                         <TouchableOpacity 
                             style={styles.statCardWrapper}
-                            onPress={() => router.push('/residents')}
+                            onPress={() => router.push('/resident')}
                         >
                             <StatCard 
                                 icon={<Users color="#9333ea" />} 
@@ -207,7 +209,7 @@ export default function DashboardScreen() {
                             <Button 
                                 variant="outline" 
                                 style={styles.quickActionButton}
-                                onPress={() => router.push('/residents')}
+                                onPress={() => router.push('/resident')}
                             >
                                 <Users size={22} color="#4b5563" style={styles.actionIcon} />
                                 <Text style={styles.quickActionText}>Gerenciar Moradores</Text>
@@ -215,7 +217,7 @@ export default function DashboardScreen() {
                             <Button 
                                 variant="outline" 
                                 style={styles.quickActionButton}
-                                onPress={() => router.push('/reports')}
+                                onPress={() => router.push('/report')}
                             >
                                 <BarChart3 size={22} color="#4b5563" style={styles.actionIcon} />
                                 <Text style={styles.quickActionText}>Ver Relatórios</Text>

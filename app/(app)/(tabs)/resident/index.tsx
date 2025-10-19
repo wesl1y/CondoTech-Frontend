@@ -8,7 +8,6 @@ import {
     Alert,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -23,7 +22,8 @@ import { Input } from '@/components/ui/input';
 import { useMoradores } from '../../../../hooks/useMoradores';
 import { useUnidades } from '../../../../hooks/useUnidades';
 import { CreateMoradorDTO, MoradorDTO, TipoMorador } from '../../../../services/moradorService';
-import { styles } from './styles';
+import { styles } from '../../../../styles/resident/styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ResidentsScreen() {
     // Estados de filtros e busca (locais)

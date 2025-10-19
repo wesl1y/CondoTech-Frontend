@@ -1,18 +1,18 @@
 // src/app/(tabs)/issues/components/IssueDetailModal.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Image, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, TouchableOpacity } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
-import { Ocorrencia, ocorrenciaService } from '@/services/ocorrenciaService';
 import { Comentario, comentarioService } from '@/services/comentarioService';
+import { Ocorrencia, ocorrenciaService } from '@/services/ocorrenciaService';
 import { getFullImageUrl } from '@/utils/imageUtils';
-import { styles } from '../styles';
+import * as SecureStore from 'expo-secure-store';
 import { AlertTriangle, CheckCircle2, Clock, MessageSquare, Send, Trash2, User, XCircle } from 'lucide-react-native';
-import { statusMap } from '../issues.constants';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { styles } from '../../styles/issues/_styles';
+import { statusMap } from './issues.constants';
 
 interface IssueDetailModalProps {
     issue: Ocorrencia;

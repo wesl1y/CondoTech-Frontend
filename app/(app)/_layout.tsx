@@ -43,19 +43,19 @@ function CustomDrawerContent(props: any) {
             label="Relatórios"
             icon={({ color, size }) => <BarChart3 color={color} size={size} />}
             focused={isItemActive('/reports')} // <-- A MÁGICA ACONTECE AQUI
-            onPress={() => router.push('/reports')}
+            onPress={() => router.push('/report')}
           />
           <DrawerItem
             label="Moradores"
             icon={({ color, size }) => <Users color={color} size={size} />}
-            focused={isItemActive('/residents')} 
-            onPress={() => router.push('/residents')}
+            focused={isItemActive('/resident')} 
+            onPress={() => router.push('/resident')}
           />
          <DrawerItem
           label="Gerenciar Áreas"
            icon={({ color, size }) => <Grid3X3 color={color} size={size} />}
-          focused={isItemActive('/manage-reservations')} 
-          onPress={() => router.push('/manage-reservations')} />
+          focused={isItemActive('/commom-area')} 
+          onPress={() => router.push('/commom-area')} />
           </>
     )}
     </DrawerContentScrollView>

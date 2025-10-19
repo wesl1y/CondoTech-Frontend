@@ -1,11 +1,12 @@
 import { CheckCircle2, ChevronRight, Clock, Wrench, Users, Shield, DollarSign, Info } from 'lucide-react-native';
 import React from 'react';
-import { FlatList, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
-import { styles } from './styles';
+import { styles } from '../../../../styles/notifications/styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- MOCK DATA ---
 const notificationsData: Notification[] = [
