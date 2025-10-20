@@ -769,51 +769,31 @@ export default function ReservasScreen() {
         {selectedArea && selectedDate && selectedTipo && (selectedTipo !== TipoReserva.HORA || horaInicio) && (
           <View style={styles.section}>
             <View style={styles.resumo}>
-            <Text style={styles.resumoTitle}>Resumo da Reserva</Text>
+              <Text style={styles.resumoTitle}>Resumo da Reserva</Text>
 
-            <View style={styles.resumoItemContainer}>
-              <MaterialCommunityIcons 
-                name="map-marker-outline" 
-                size={18} 
-                style={styles.resumoItemIcon} 
-              />{/* Quebra de linha removida */}
-              <Text style={styles.resumoItem}>{selectedArea.nome}</Text>
+              <View style={styles.resumoItemContainer}>
+      	      {/* Ícone e Texto na mesma linha para evitar erro */}
+              <MaterialCommunityIcons name="map-marker-outline" size={18} style={styles.resumoItemIcon} /><Text style={styles.resumoItem}>{selectedArea.nome}</Text>
             </View>
 
             <View style={styles.resumoItemContainer}>
-              <MaterialCommunityIcons 
-                name="calendar-today" 
-                size={18} 
-                style={styles.resumoItemIcon} 
-              />{/* Quebra de linha removida */}
-              <Text style={styles.resumoItem}>
-                {new Date(`${selectedDate}T12:00:00`).toLocaleDateString('pt-BR')}
-              </Text>
+      	      {/* Ícone e Texto na mesma linha para evitar erro */}
+              <MaterialCommunityIcons name="calendar-today" size={18} style={styles.resumoItemIcon} /><Text style={styles.resumoItem}>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString('pt-BR')}</Text>
             </View>
 
             <View style={styles.resumoItemContainer}>
-              <MaterialCommunityIcons 
-                name="clock-outline" 
-                size={18} 
-                style={styles.resumoItemIcon} 
-              />{/* Quebra de linha removida */}
-              <Text style={styles.resumoItem}>
-                {selectedTipo === TipoReserva.HORA && horaInicio
+      	      {/* Ícone e Texto na mesma linha para evitar erro */}
+              <MaterialCommunityIcons name="clock-outline" size={18} style={styles.resumoItemIcon} /><Text style={styles.resumoItem}>{
+                selectedTipo === TipoReserva.HORA && horaInicio
                   ? `${horaInicio} - ${calcularHoraFim(horaInicio, duracao)}`
-                  : TIPO_LABELS[selectedTipo]}
-              </Text>
+                	: TIPO_LABELS[selectedTipo]
+              }</Text>
             </View>
 
             {selectedArea.valorTaxa > 0 && (
               <View style={styles.resumoItemContainer}>
-                <MaterialCommunityIcons 
-                  name="currency-brl" 
-                  size={18} 
-                  style={styles.resumoItemIcon} 
-                />{/* Quebra de linha removida */}
-                <Text style={styles.resumoItem}>
-                  R$ {selectedArea.valorTaxa.toFixed(2)}
-                </Text>
+      	          {/* Ícone e Texto na mesma linha para evitar erro */}
+            	  <MaterialCommunityIcons name="currency-brl" size={18} style={styles.resumoItemIcon} /><Text style={styles.resumoItem}>R$ {selectedArea.valorTaxa.toFixed(2)}</Text>
               </View>
             )}
           </View>
