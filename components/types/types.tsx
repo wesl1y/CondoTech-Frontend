@@ -1,6 +1,7 @@
 // app/(app)/(tabs)/manage-reservations/types/index.ts
 
-type TipoReserva = 'POR_HORA' | 'POR_PERIODO' | 'DIARIA';
+// ✅ CORRIGIDO: Tipos de reserva conforme aceitos pelo backend
+type TipoReserva = 'HORA' | 'MANHA' | 'TARDE' | 'NOITE' | 'DIA_TODO';
 
 interface Regra {
   id: number;
@@ -39,10 +40,13 @@ interface AreaComumRequestPayload {
   condominioId: number;
 }
 
+// ✅ CORRIGIDO: Estado dos tipos de reserva
 interface TiposReservaState {
-  POR_HORA: boolean;
-  POR_PERIODO: boolean;
-  DIARIA: boolean;
+  HORA: boolean;
+  MANHA: boolean;
+  TARDE: boolean;
+  NOITE: boolean;
+  DIA_TODO: boolean;
 }
 
 interface AreaItemProps {

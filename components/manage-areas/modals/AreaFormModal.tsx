@@ -1,4 +1,4 @@
-// app/(app)/(tabs)/manage-reservations/components/modals/AreaFormModal.tsx
+// components/modals/AreaFormModal.tsx
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/Switch';
 import { Textarea } from '@/components/ui/Textarea';
@@ -10,12 +10,10 @@ import {
   Alert,
   LayoutAnimation,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  UIManager,
   View
 } from 'react-native';
 import { COLORS, styles } from '../../../styles/common-area/styles';
@@ -35,7 +33,6 @@ import {
 import Checkbox from '../Checkbox';
 import FormRulesSection from '../FormRulesSection';
 
-
 const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave, areaToEdit }) => {
   // Estados básicos
   const [nome, setNome] = useState<string>('');
@@ -43,10 +40,14 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
   const [valorTaxa, setValorTaxa] = useState<string>('');
   const [icone, setIcone] = useState<string>(iconesDisponiveisNomes[0]);
   const [ativa, setAtiva] = useState<boolean>(true);
+  
+  // Estado atualizado com os tipos CORRETOS
   const [tiposReserva, setTiposReserva] = useState<TiposReservaState>({ 
-    POR_HORA: false, 
-    POR_PERIODO: false, 
-    DIARIA: false 
+    HORA: false,
+    MANHA: false,
+    TARDE: false,
+    NOITE: false,
+    DIA_TODO: false
   });
   
   // Estados de controle
@@ -78,10 +79,13 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
         setIcone(areaToEdit.icone || iconesDisponiveisNomes[0]);
         setAtiva(areaToEdit.ativa);
         
+        // Tipos de reserva CORRETOS
         const tiposAtivos: TiposReservaState = { 
-          POR_HORA: false, 
-          POR_PERIODO: false, 
-          DIARIA: false 
+          HORA: false,
+          MANHA: false,
+          TARDE: false,
+          NOITE: false,
+          DIA_TODO: false
         };
         areaToEdit.tiposReservaDisponiveis?.forEach((tipo: TipoReserva) => {
           if (tipo in tiposAtivos) tiposAtivos[tipo] = true;
@@ -122,13 +126,18 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
     setValorTaxa('');
     setIcone(iconesDisponiveisNomes[0]);
     setAtiva(true);
-    setTiposReserva({ POR_HORA: false, POR_PERIODO: false, DIARIA: false });
+    setTiposReserva({ 
+      HORA: false,
+      MANHA: false,
+      TARDE: false,
+      NOITE: false,
+      DIA_TODO: false
+    });
     setSelectedRuleIds(new Set());
     setErrors({});
     setTouched({});
   };
 
-  // Formatação de moeda em tempo real
   const formatCurrency = (value: string): string => {
     const numbers = value.replace(/\D/g, '');
     if (!numbers) return '';
@@ -145,7 +154,6 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
     validateField('valorTaxa', formatted);
   };
 
-  // Validação em tempo real
   const validateField = (field: string, value: any) => {
     const newErrors = { ...errors };
     
@@ -233,10 +241,8 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
   };
 
   const handleSubmit = async (): Promise<void> => {
-    // Marca todos os campos como tocados
     setTouched({ nome: true, tiposReserva: true });
     
-    // Valida todos os campos
     const isNomeValid = validateField('nome', nome);
     const isTiposValid = validateField('tiposReserva', tiposReserva);
     const isValorValid = validateField('valorTaxa', valorTaxa);
@@ -251,6 +257,8 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
     
     const tiposReservaDisponiveis = (Object.keys(tiposReserva) as TipoReserva[])
       .filter(key => tiposReserva[key as keyof TiposReservaState]);
+    
+    console.log('📤 Tipos de Reserva Enviados:', tiposReservaDisponiveis);
     
     setIsSubmitting(true);
     
@@ -268,6 +276,8 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
       regraIds: Array.from(selectedRuleIds),
       condominioId: 1,
     };
+
+    console.log('📤 Payload Completo:', JSON.stringify(payload, null, 2));
 
     try {
       if (areaToEdit) {
@@ -315,7 +325,6 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
             <View style={styles.formSection}>
               <Text style={styles.sectionTitle}>Informações Básicas</Text>
               
-              {/* Nome */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
                   Nome da Área <Text style={styles.required}>*</Text>
@@ -339,7 +348,6 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
                 )}
               </View>
 
-              {/* Descrição */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Descrição</Text>
                 <Textarea 
@@ -357,7 +365,6 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
               </View>
 
               <View style={styles.formRow}>
-                {/* Taxa */}
                 <View style={styles.formGroupHalf}>
                   <Text style={styles.formLabel}>Taxa de Reserva</Text>
                   <View style={formStyles.currencyInputContainer}>
@@ -376,7 +383,6 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
                   )}
                 </View>
 
-                {/* Ícone */}
                 <View style={styles.formGroupHalf}>
                   <Text style={styles.formLabel}>Ícone</Text>
                   <TouchableOpacity
@@ -394,7 +400,6 @@ const AreaFormModal: React.FC<AreaFormModalProps> = ({ visible, onClose, onSave,
                 </View>
               </View>
 
-              {/* Seletor de Ícones Expansível */}
               {showIconPicker && (
                 <View style={formStyles.iconPickerContainer}>
                   <View style={formStyles.iconPickerHeader}>
@@ -617,7 +622,6 @@ const FormModalFooter: React.FC<FormModalFooterProps> = ({
   </View>
 );
 
-// Estilos específicos do formulário melhorado
 const formStyles = StyleSheet.create({
   formInputError: {
     borderColor: COLORS.danger,

@@ -33,15 +33,17 @@ export const renderIcon = (iconName: string) => {
   }
 };
 
-// Tipos de reserva disponíveis
-export const tiposDeReserva: TipoReserva[] = ['POR_HORA', 'POR_PERIODO', 'DIARIA'];
+// ✅ CORRIGIDO: Tipos de reserva conforme aceitos pelo backend
+export const tiposDeReserva: TipoReserva[] = ['HORA', 'MANHA', 'TARDE', 'NOITE', 'DIA_TODO'];
 
-// Formata tipo de reserva para exibição
+// ✅ CORRIGIDO: Formata tipo de reserva para exibição
 export const formatarTipoReserva = (tipo: TipoReserva): string => {
   const tipos: Record<TipoReserva, string> = {
-    'POR_HORA': 'Por Hora',
-    'POR_PERIODO': 'Por Período',
-    'DIARIA': 'Diária'
+    'HORA': 'Por Hora',
+    'MANHA': 'Período da Manhã',
+    'TARDE': 'Período da Tarde',
+    'NOITE': 'Período da Noite',
+    'DIA_TODO': 'Dia Inteiro'
   };
   return tipos[tipo] || tipo;
 };
