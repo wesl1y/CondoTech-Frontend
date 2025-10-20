@@ -339,7 +339,7 @@ const ReservaCard: React.FC<{
           <MaterialCommunityIcons name={iconName as any} size={24} color={THEME.primary} />
           <View style={styles.reservaTexts}>
             <Text style={styles.reservaArea}>{reserva.areaComum.nome}</Text>
-            <Text style={styles.reservaData}>{new Date(reserva.dataReserva).toLocaleDateString('pt-BR')}</Text>
+           <Text style={styles.reservaData}>{new Date(reserva.dataReserva).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</Text>
             <Text style={styles.reservaHorario}>
               {reserva.tipoReserva === TipoReserva.HORA
                 ? `${reserva.horaInicio} - ${reserva.horaFim}`
