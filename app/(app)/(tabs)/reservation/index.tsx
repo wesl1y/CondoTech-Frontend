@@ -4,8 +4,30 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Calendar } from 'react-native-calendars';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
+
+// Configuração do calendário para português
+LocaleConfig.locales['pt-br'] = {
+  monthNames: [
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro'
+  ],
+  monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+  dayNames: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
+  dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+  today: 'Hoje'
+};
+LocaleConfig.defaultLocale = 'pt-br';
 
 // ============= TYPES & ENUMS =============
 enum TipoReserva {
@@ -67,20 +89,28 @@ interface ReservaBackend {
 
 // ============= CONSTANTS =============
 const THEME = {
-  primary: '#2196F3',
-  secondary: '#4CAF50',
-  error: '#F44336',
-  warning: '#FF9800',
-  success: '#4CAF50',
-  disabled: '#BDBDBD',
-  background: '#F5F5F5',
+  primary: '#3b82f6',
+  secondary: '#10b981',
+  error: '#ef4444',
+  warning: '#f59e0b',
+  success: '#10b981',
+  disabled: '#94a3b8',
+  background: '#f8fafc',
+  cardBackground: '#fff',
+  border: '#e2e8f0',
+  text: {
+    primary: '#0f172a',
+    secondary: '#475569',
+    tertiary: '#64748b',
+    disabled: '#94a3b8',
+  }
 };
 
 const STATUS_COLORS = {
-  PENDENTE: '#FF9800',
-  CONFIRMADA: '#4CAF50',
-  CANCELADA: '#F44336',
-  FINALIZADA: '#9E9E9E',
+  PENDENTE: '#f59e0b',
+  CONFIRMADA: '#10b981',
+  CANCELADA: '#ef4444',
+  FINALIZADA: '#6b7280',
 };
 
 const HORARIOS_FIXOS = {
@@ -89,6 +119,10 @@ const HORARIOS_FIXOS = {
   NOITE: { inicio: '18:01', fim: '23:59' },
   DIA_TODO: { inicio: '06:00', fim: '23:59' }
 };
+
+const HORA_MINIMA = 6; // 06:00
+const HORA_MAXIMA = 23; // 23:00
+const MINUTO_MAXIMO = 59; // 23:59
 
 const HORAS_INICIO = Array.from({ length: 17 }, (_, i) => {
   const hora = i + 6;
@@ -269,6 +303,51 @@ const verificarConflitoHorario = (novoInicio: string, novoFim: string, reservas:
   });
 };
 
+// Verifica se uma hora específica está disponível
+const isHoraDisponivel = (hora: string, reservas: Reserva[]): boolean => {
+  const [h, m] = hora.split(':').map(Number);
+  const horarioMin = h * 60 + m;
+  
+  return !reservas.some(r => {
+    if (r.status !== 'CONFIRMADA') return false;
+    
+    const inicio = r.horaInicio || HORARIOS_FIXOS[r.tipoReserva as keyof typeof HORARIOS_FIXOS]?.inicio;
+    const fim = r.horaFim || HORARIOS_FIXOS[r.tipoReserva as keyof typeof HORARIOS_FIXOS]?.fim;
+    
+    if (!inicio || !fim) return false;
+    
+    const [rInicioH, rInicioM] = inicio.split(':').map(Number);
+    const [rFimH, rFimM] = fim.split(':').map(Number);
+    const rInicioMin = rInicioH * 60 + rInicioM;
+    const rFimMin = rFimH * 60 + rFimM;
+    
+    // Verifica se o horário está dentro de alguma reserva existente
+    return horarioMin >= rInicioMin && horarioMin < rFimMin;
+  });
+};
+
+// Calcula a duração máxima permitida para uma hora de início
+const calcularDuracaoMaxima = (horaInicio: string): number => {
+  const [hora] = horaInicio.split(':').map(Number);
+  // Máximo é até 23:59, então se começar às 22:00, pode ter no máximo 1 hora
+  const horasRestantes = HORA_MAXIMA - hora;
+  return Math.max(1, horasRestantes);
+};
+
+// Verifica se a duração é válida para o horário de início
+const isDuracaoValida = (horaInicio: string, duracao: number, reservas: Reserva[]): boolean => {
+  const horaFim = calcularHoraFim(horaInicio, duracao);
+  const [horaFimH, horaFimM] = horaFim.split(':').map(Number);
+  
+  // Verifica se ultrapassa o horário máximo (23:59)
+  if (horaFimH > HORA_MAXIMA || (horaFimH === HORA_MAXIMA && horaFimM > MINUTO_MAXIMO)) {
+    return false;
+  }
+  
+  // Verifica se não conflita com outras reservas
+  return !verificarConflitoHorario(horaInicio, horaFim, reservas);
+};
+
 // ============= SHARED COMPONENTS =============
 
 const StatusBadge: React.FC<{ status: StatusReserva }> = ({ status }) => (
@@ -331,33 +410,71 @@ const ReservaCard: React.FC<{
   }
 
   const iconName = getIconName(reserva.areaComum.icone);
+  const isCancelada = reserva.status === StatusReserva.CANCELADA;
+  const showCancelButton = canCancel && !isCancelada;
 
   return (
-    <View style={styles.reservaCard}>
+    <View style={[
+      styles.reservaCard,
+      isCancelada && styles.reservaCardCancelada
+    ]}>
       <View style={styles.reservaHeader}>
-        <View style={styles.reservaInfo}>
-          <MaterialCommunityIcons name={iconName as any} size={24} color={THEME.primary} />
-          <View style={styles.reservaTexts}>
-            <Text style={styles.reservaArea}>{reserva.areaComum.nome}</Text>
-           <Text style={styles.reservaData}>{new Date(reserva.dataReserva).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</Text>
-            <Text style={styles.reservaHorario}>
+        <View style={styles.reservaIconContainer}>
+          <MaterialCommunityIcons 
+            name={iconName as any} 
+            size={40} 
+            color={isCancelada ? THEME.disabled : THEME.primary} 
+          />
+        </View>
+        <View style={styles.reservaMainInfo}>
+          <View style={styles.reservaTopRow}>
+            <Text style={[
+              styles.reservaArea,
+              isCancelada && styles.reservaTextCancelada
+            ]}>
+              {reserva.areaComum.nome}
+            </Text>
+            <StatusBadge status={reserva.status} />
+          </View>
+          
+          <View style={styles.reservaDetailsRow}>
+            <MaterialCommunityIcons name="calendar" size={16} color={isCancelada ? THEME.disabled : '#666'} />
+            <Text style={[
+              styles.reservaDetail,
+              isCancelada && styles.reservaTextCancelada
+            ]}>
+              {new Date(reserva.dataReserva).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+            </Text>
+          </View>
+
+          <View style={styles.reservaDetailsRow}>
+            <MaterialCommunityIcons name="clock-outline" size={16} color={isCancelada ? THEME.disabled : THEME.primary} />
+            <Text style={[
+              styles.reservaDetail,
+              isCancelada && styles.reservaTextCancelada,
+              !isCancelada && styles.reservaHorarioDestaque
+            ]}>
               {reserva.tipoReserva === TipoReserva.HORA
                 ? `${reserva.horaInicio} - ${reserva.horaFim}`
                 : TIPO_LABELS[reserva.tipoReserva]}
             </Text>
           </View>
         </View>
-        <StatusBadge status={reserva.status} />
       </View>
+
       {showMorador && reserva.morador && (
         <View style={styles.moradorInfo}>
-          <MaterialCommunityIcons name="account" size={16} color="#666" />
-          <Text style={styles.moradorText}>
+          <MaterialCommunityIcons name="account" size={18} color={isCancelada ? THEME.disabled : '#666'} />
+          <Text style={[
+            styles.moradorText,
+            isCancelada && styles.reservaTextCancelada
+          ]}>
             {reserva.morador.nome} - Torre {reserva.morador.torre}, Unidade {reserva.morador.unidade}
           </Text>
         </View>
       )}
-      {canCancel && (
+
+      {showCancelButton && (
         <TouchableOpacity style={styles.cancelarBtn} onPress={onCancelar}>
           <MaterialCommunityIcons name="close-circle" size={20} color={THEME.error} />
           <Text style={styles.cancelarBtnText}>Cancelar Reserva</Text>
@@ -406,7 +523,16 @@ export default function ReservasScreen() {
     return filtered;
   }, [todasReservas, filterStatus]);
 
-  
+  // Calcula durações válidas baseado na hora de início
+  const duracoesValidas = useMemo(() => {
+    if (!horaInicio) return DURACOES;
+    
+    const duracaoMaxima = calcularDuracaoMaxima(horaInicio);
+    return DURACOES.filter(d => {
+      if (d.value > duracaoMaxima) return false;
+      return isDuracaoValida(horaInicio, d.value, disponibilidade);
+    });
+  }, [horaInicio, disponibilidade]);
 
   // ============= EFFECTS =============
   
@@ -469,6 +595,16 @@ export default function ReservasScreen() {
     }
   }, [activeTab, refreshKey, isAdmin, areas]);
 
+  // Reseta duração quando hora de início muda
+  useEffect(() => {
+    if (horaInicio && duracoesValidas.length > 0) {
+      // Se a duração atual não é válida, seleciona a primeira válida
+      if (!duracoesValidas.find(d => d.value === duracao)) {
+        setDuracao(duracoesValidas[0].value);
+      }
+    }
+  }, [horaInicio, duracoesValidas]);
+
   // ============= HANDLERS =============
   
   const handleSelectArea = (area: AreaComum) => {
@@ -481,6 +617,8 @@ export default function ReservasScreen() {
   const handleSelectDate = useCallback(async (date: string) => {
     setSelectedDate(date);
     setSelectedTipo(null);
+    setHoraInicio('');
+    setDuracao(1);
     if (selectedArea) {
       try {
         const reservas = await reservaService.getDisponibilidade(selectedArea.id, date);
@@ -493,65 +631,65 @@ export default function ReservasScreen() {
   }, [selectedArea]);
 
   const isPeriodoDisponivel = (tipo: TipoReserva): boolean => {
-      const reservasConfirmadas = disponibilidade.filter(r => r.status === 'CONFIRMADA');
+      const reservasConfirmadas = disponibilidade.filter(r => r.status === 'CONFIRMADA');
 
-      // REGRA 1: Se "DIA_TODO" já está reservado, NADA MAIS (incluindo "DIA_TODO") está disponível.
-      const diaTodoReservado = reservasConfirmadas.some(
-        r => r.tipoReserva === TipoReserva.DIA_TODO
-      );
-      if (diaTodoReservado) {
-        return false; // Bloqueia HORA, MANHA, TARDE, NOITE e o próprio DIA_TODO
-      }
+      // REGRA 1: Se "DIA_TODO" já está reservado, NADA MAIS (incluindo "DIA_TODO") está disponível.
+      const diaTodoReservado = reservasConfirmadas.some(
+        r => r.tipoReserva === TipoReserva.DIA_TODO
+      );
+      if (diaTodoReservado) {
+        return false; // Bloqueia HORA, MANHA, TARDE, NOITE e o próprio DIA_TODO
+      }
 
-      // REGRA 2: Se estamos tentando selecionar "DIA_TODO",
-      // ele só está disponível se NÃO HOUVER NENHUMA outra reserva (de qualquer tipo).
-      if (tipo === TipoReserva.DIA_TODO) {
-        return reservasConfirmadas.length === 0;
-      }
+      // REGRA 2: Se estamos tentando selecionar "DIA_TODO",
+      // ele só está disponível se NÃO HOUVER NENHUMA outra reserva (de qualquer tipo).
+      if (tipo === TipoReserva.DIA_TODO) {
+        return reservasConfirmadas.length === 0;
+      }
 
-      // REGRA 3: Se estamos tentando selecionar um período fixo (MANHA, TARDE, NOITE),
-      // ele fica indisponível se houver QUALQUER conflito (seja HORA, ou o próprio período).
-      if (
-        tipo === TipoReserva.MANHA ||
-        tipo === TipoReserva.TARDE ||
-        tipo === TipoReserva.NOITE
-      ) {
-        const { inicio, fim } = HORARIOS_FIXOS[tipo];
-        // A função 'verificarConflitoHorario' checa se o período (ex: 06:00-12:00)
-        // conflita com QUALQUER reserva existente na lista 'reservasConfirmadas'.
-        if (verificarConflitoHorario(inicio, fim, reservasConfirmadas)) {
-          return false; // Há conflito, o período não está disponível
-        }
-      }
+      // REGRA 3: Se estamos tentando selecionar um período fixo (MANHA, TARDE, NOITE),
+      // ele fica indisponível se houver QUALQUER conflito (seja HORA, ou o próprio período).
+      if (
+        tipo === TipoReserva.MANHA ||
+        tipo === TipoReserva.TARDE ||
+        tipo === TipoReserva.NOITE
+      ) {
+        const { inicio, fim } = HORARIOS_FIXOS[tipo];
+        // A função 'verificarConflitoHorario' checa se o período (ex: 06:00-12:00)
+        // conflita com QUALQUER reserva existente na lista 'reservasConfirmadas'.
+        if (verificarConflitoHorario(inicio, fim, reservasConfirmadas)) {
+          return false; // Há conflito, o período não está disponível
+        }
+      }
 
-      // REGRA 4: Se estamos tentando selecionar "HORA".
-      // A seleção "HORA" é bloqueada se todos os períodos fixos já estiverem tomados.
-      if (tipo === TipoReserva.HORA) {
-        const manhaReservada = verificarConflitoHorario(
-          HORARIOS_FIXOS.MANHA.inicio,
-          HORARIOS_FIXOS.MANHA.fim,
-          reservasConfirmadas
-        );
-        const tardeReservada = verificarConflitoHorario(
-          HORARIOS_FIXOS.TARDE.inicio,
-          HORARIOS_FIXOS.TARDE.fim,
-          reservasConfirmadas
-        );
-        const noiteReservada = verificarConflitoHorario(
-          HORARIOS_FIXOS.NOITE.inicio,
-          HORARIOS_FIXOS.NOITE.fim,
-          reservasConfirmadas
-        );
-        
-        // Se todos os 3 períodos fixos estão indisponíveis, não há espaço para HORA.
-        if (manhaReservada && tardeReservada && noiteReservada) {
-          return false;
-        }
-      }
+      // REGRA 4: Se estamos tentando selecionar "HORA".
+      // A seleção "HORA" é bloqueada se todos os períodos fixos já estiverem tomados.
+      if (tipo === TipoReserva.HORA) {
+        const manhaReservada = verificarConflitoHorario(
+          HORARIOS_FIXOS.MANHA.inicio,
+          HORARIOS_FIXOS.MANHA.fim,
+          reservasConfirmadas
+        );
+        const tardeReservada = verificarConflitoHorario(
+          HORARIOS_FIXOS.TARDE.inicio,
+          HORARIOS_FIXOS.TARDE.fim,
+          reservasConfirmadas
+        );
+        const noiteReservada = verificarConflitoHorario(
+          HORARIOS_FIXOS.NOITE.inicio,
+          HORARIOS_FIXOS.NOITE.fim,
+          reservasConfirmadas
+        );
+        
+        // Se todos os 3 períodos fixos estão indisponíveis, não há espaço para HORA.
+        if (manhaReservada && tardeReservada && noiteReservada) {
+          return false;
+        }
+      }
 
-      // Se passou por todas as regras de bloqueio, o período está disponível.
-      return true;
-    };
+      // Se passou por todas as regras de bloqueio, o período está disponível.
+      return true;
+    };
 
   const handleCriarReserva = async () => {
     if (!selectedArea || !selectedDate || !selectedTipo) {
@@ -572,6 +710,15 @@ export default function ReservasScreen() {
       if (selectedTipo === TipoReserva.HORA) {
         payload.horaInicio = horaInicio;
         payload.horaFim = calcularHoraFim(horaInicio, duracao);
+        
+        // Verifica se ultrapassa o horário máximo
+        const [horaFimH, horaFimM] = payload.horaFim.split(':').map(Number);
+        if (horaFimH > HORA_MAXIMA || (horaFimH === HORA_MAXIMA && horaFimM > MINUTO_MAXIMO)) {
+          Alert.alert('Horário Inválido', 'A reserva não pode ultrapassar às 23:59');
+          setLoadingCriar(false);
+          return;
+        }
+        
         if (verificarConflitoHorario(payload.horaInicio, payload.horaFim, disponibilidade)) {
           Alert.alert('Conflito', 'Este horário já está reservado');
           setLoadingCriar(false);
@@ -587,6 +734,7 @@ export default function ReservasScreen() {
             setSelectedDate('');
             setSelectedTipo(null);
             setHoraInicio('');
+            setDuracao(1);
             setRefreshKey(prev => prev + 1);
             // Recarrega as áreas para atualizar a lista
             loadAreasData();
@@ -737,66 +885,89 @@ export default function ReservasScreen() {
             <Text style={styles.sectionTitle}>4. Horário e Duração</Text>
             <Text style={styles.label}>Horário de Início</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horaScroll}>
-              {HORAS_INICIO.map(hora => (
-                <TouchableOpacity
-                  key={hora}
-                  style={[styles.horaChip, horaInicio === hora && styles.horaChipSelected]}
-                  onPress={() => setHoraInicio(hora)}
-                >
-                  <Text style={[styles.horaChipText, horaInicio === hora && styles.horaChipTextSelected]}>
-                    {hora}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {HORAS_INICIO.map(hora => {
+                const disponivel = isHoraDisponivel(hora, disponibilidade);
+                return (
+                  <TouchableOpacity
+                    key={hora}
+                    style={[
+                      styles.horaChip, 
+                      horaInicio === hora && styles.horaChipSelected,
+                      !disponivel && styles.horaChipDisabled
+                    ]}
+                    onPress={() => disponivel && setHoraInicio(hora)}
+                    disabled={!disponivel}
+                  >
+                    <Text style={[
+                      styles.horaChipText, 
+                      horaInicio === hora && styles.horaChipTextSelected,
+                      !disponivel && styles.horaChipTextDisabled
+                    ]}>
+                      {hora}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
-            <Text style={styles.label}>Duração</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horaScroll}>
-              {DURACOES.slice(0, 8).map(d => (
-                <TouchableOpacity
-                  key={d.value}
-                  style={[styles.horaChip, duracao === d.value && styles.horaChipSelected]}
-                  onPress={() => setDuracao(d.value)}
-                >
-                  <Text style={[styles.horaChipText, duracao === d.value && styles.horaChipTextSelected]}>
-                    {d.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            
+            {horaInicio && (
+              <>
+                <Text style={styles.label}>Duração</Text>
+                {duracoesValidas.length === 0 ? (
+                  <Text style={styles.avisoText}>Nenhuma duração disponível para este horário</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horaScroll}>
+                    {duracoesValidas.map(d => (
+                      <TouchableOpacity
+                        key={d.value}
+                        style={[styles.horaChip, duracao === d.value && styles.horaChipSelected]}
+                        onPress={() => setDuracao(d.value)}
+                      >
+                        <Text style={[styles.horaChipText, duracao === d.value && styles.horaChipTextSelected]}>
+                          {d.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </>
+            )}
           </View>
         )}
 
-        {selectedArea && selectedDate && selectedTipo && (selectedTipo !== TipoReserva.HORA || horaInicio) && (
+        {selectedArea && selectedDate && selectedTipo && (selectedTipo !== TipoReserva.HORA || (horaInicio && duracoesValidas.length > 0)) && (
           <View style={styles.section}>
             <View style={styles.resumo}>
-              <Text style={styles.resumoTitle}>Resumo da Reserva</Text>
+              <Text style={styles.resumoTitle}>Resumo da Reserva</Text>
 
-              <View style={styles.resumoItemContainer}>
-      	      {/* Ícone e Texto na mesma linha para evitar erro */}
-              <MaterialCommunityIcons name="map-marker-outline" size={18} style={styles.resumoItemIcon} /><Text style={styles.resumoItem}>{selectedArea.nome}</Text>
-            </View>
+              <View style={styles.resumoItemContainer}>
+                <MaterialCommunityIcons name="map-marker-outline" size={18} color={THEME.primary} />
+                <Text style={styles.resumoItem}>{selectedArea.nome}</Text>
+              </View>
 
-            <View style={styles.resumoItemContainer}>
-      	      {/* Ícone e Texto na mesma linha para evitar erro */}
-              <MaterialCommunityIcons name="calendar-today" size={18} style={styles.resumoItemIcon} /><Text style={styles.resumoItem}>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString('pt-BR')}</Text>
-            </View>
+              <View style={styles.resumoItemContainer}>
+                <MaterialCommunityIcons name="calendar-today" size={18} color={THEME.primary} />
+                <Text style={styles.resumoItem}>
+                  {new Date(`${selectedDate}T12:00:00`).toLocaleDateString('pt-BR')}
+                </Text>
+              </View>
 
-            <View style={styles.resumoItemContainer}>
-      	      {/* Ícone e Texto na mesma linha para evitar erro */}
-              <MaterialCommunityIcons name="clock-outline" size={18} style={styles.resumoItemIcon} /><Text style={styles.resumoItem}>{
-                selectedTipo === TipoReserva.HORA && horaInicio
-                  ? `${horaInicio} - ${calcularHoraFim(horaInicio, duracao)}`
-                	: TIPO_LABELS[selectedTipo]
-              }</Text>
-            </View>
+              <View style={styles.resumoItemContainer}>
+                <MaterialCommunityIcons name="clock-outline" size={18} color={THEME.primary} />
+                <Text style={styles.resumoItem}>
+                  {selectedTipo === TipoReserva.HORA && horaInicio
+                    ? `${horaInicio} - ${calcularHoraFim(horaInicio, duracao)}`
+                    : TIPO_LABELS[selectedTipo]}
+                </Text>
+              </View>
 
-            {selectedArea.valorTaxa > 0 && (
-              <View style={styles.resumoItemContainer}>
-      	          {/* Ícone e Texto na mesma linha para evitar erro */}
-            	  <MaterialCommunityIcons name="currency-brl" size={18} style={styles.resumoItemIcon} /><Text style={styles.resumoItem}>R$ {selectedArea.valorTaxa.toFixed(2)}</Text>
-              </View>
-            )}
-          </View>
+              {selectedArea.valorTaxa > 0 && (
+                <View style={styles.resumoItemContainer}>
+                  <MaterialCommunityIcons name="currency-brl" size={18} color={THEME.primary} />
+                  <Text style={styles.resumoItem}>R$ {selectedArea.valorTaxa.toFixed(2)}</Text>
+                </View>
+              )}
+            </View>
             <TouchableOpacity
               style={[styles.confirmarBtn, loadingCriar && styles.confirmarBtnDisabled]}
               onPress={handleCriarReserva}
@@ -934,7 +1105,7 @@ export default function ReservasScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>Reservas</Text>
@@ -977,63 +1148,77 @@ export default function ReservasScreen() {
       {activeTab === 'Criar' && renderCriarTab()}
       {activeTab === 'Minhas' && renderMinhasTab()}
       {activeTab === 'Todas' && isAdmin && renderTodasTab()}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: THEME.background,
   },
   header: {
-    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 20,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   headerTextContainer: {
-    marginBottom: 0,
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 28,
+    fontWeight: '700',
+    color: THEME.text.primary,
+    marginBottom: 2,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: THEME.text.tertiary,
+    fontWeight: '500',
   },
   tabsContainer: {
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: THEME.border,
+    paddingTop: 12,
   },
   tabsScrollContent: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 0,
   },
   tab: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginRight: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    gap: 8,
+    borderRadius: 8,
+    marginBottom: -1,
   },
   activeTab: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#eff6ff',
+    borderBottomWidth: 3,
+    borderBottomColor: THEME.primary,
+    marginBottom: -1,
   },
   tabText: {
-    fontSize: 14,
+    color: THEME.text.tertiary,
     fontWeight: '600',
-    color: '#666',
-    marginLeft: 8,
+    fontSize: 14,
   },
   activeTabText: {
-    color: THEME.primary,
+    color: '#2563eb',
+    fontWeight: '700',
   },
   tabContent: {
     flex: 1,
@@ -1048,7 +1233,8 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
+    color: THEME.text.tertiary,
+    fontWeight: '500',
   },
   section: {
     padding: 16,
@@ -1057,9 +1243,10 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: THEME.text.primary,
     marginBottom: 12,
+    letterSpacing: -0.3,
   },
   areaCard: {
     width: 160,
@@ -1068,24 +1255,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: THEME.border,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   areaCardSelected: {
     borderColor: THEME.primary,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#eff6ff',
+    shadowColor: THEME.primary,
+    shadowOpacity: 0.2,
+    elevation: 3,
   },
   areaNome: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: THEME.text.primary,
     marginTop: 8,
     textAlign: 'center',
   },
   areaValor: {
     fontSize: 12,
     color: THEME.success,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginTop: 4,
   },
   tiposContainer: {
@@ -1093,15 +1288,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginTop: 8,
     justifyContent: 'center',
+    gap: 4,
   },
   tipoTag: {
     fontSize: 10,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#f1f5f9',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    marginRight: 4,
-    marginTop: 4,
+    color: THEME.text.tertiary,
+    fontWeight: '600',
   },
   tiposGrid: {
     flexDirection: 'row',
@@ -1113,26 +1309,33 @@ const styles = StyleSheet.create({
     minWidth: '45%',
     padding: 16,
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: THEME.border,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   tipoChipSelected: {
     borderColor: THEME.primary,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#eff6ff',
   },
   tipoChipDisabled: {
-    backgroundColor: '#F5F5F5',
-    borderColor: THEME.disabled,
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+    opacity: 0.6,
   },
   tipoChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: THEME.text.primary,
   },
   tipoChipTextSelected: {
     color: THEME.primary,
+    fontWeight: '700',
   },
   tipoChipTextDisabled: {
     color: THEME.disabled,
@@ -1141,13 +1344,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: THEME.error,
     marginTop: 4,
+    fontWeight: '600',
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.text.secondary,
     marginTop: 16,
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   horaScroll: {
     marginBottom: 8,
@@ -1156,117 +1362,176 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: THEME.border,
     marginRight: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   horaChipSelected: {
     borderColor: THEME.primary,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#eff6ff',
+  },
+  horaChipDisabled: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+    opacity: 0.5,
   },
   horaChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: THEME.text.primary,
   },
   horaChipTextSelected: {
     color: THEME.primary,
+    fontWeight: '700',
+  },
+  horaChipTextDisabled: {
+    color: THEME.disabled,
+  },
+  avisoText: {
+    fontSize: 14,
+    color: THEME.error,
+    fontStyle: 'italic',
+    marginTop: 8,
+    fontWeight: '500',
   },
   resumo: {
-    backgroundColor: '#F5F5F5',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  resumoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-
-
-  resumoItemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10, 
-  },
- 
-
-  resumoItemIcon: {
-    color: THEME.primary, 
-    marginRight: 10, 
-  },
-
-  resumoItem: {
-    fontSize: 14,
-    color: '#666',
-  },
+    backgroundColor: '#f8fafc',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  resumoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.text.primary,
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  resumoItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  resumoItem: {
+    fontSize: 14,
+    color: THEME.text.secondary,
+    marginLeft: 8,
+    flex: 1,
+    fontWeight: '500',
+  },
   confirmarBtn: {
     backgroundColor: THEME.primary,
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 16,
+    shadowColor: THEME.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   confirmarBtnDisabled: {
     backgroundColor: THEME.disabled,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   confirmarBtnText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   reservaCard: {
     backgroundColor: '#fff',
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 12,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: THEME.primary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  reservaCardCancelada: {
+    backgroundColor: '#fafafa',
+    opacity: 0.8,
+    borderLeftColor: THEME.disabled,
   },
   reservaHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  reservaIconContainer: {
+    backgroundColor: '#f8fafc',
+    padding: 10,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  reservaMainInfo: {
+    flex: 1,
+  },
+  reservaTopRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-  },
-  reservaInfo: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  reservaTexts: {
-    marginLeft: 12,
-    flex: 1,
+    marginBottom: 8,
+    gap: 8,
   },
   reservaArea: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: THEME.text.primary,
+    flex: 1,
+    marginRight: 8,
+    letterSpacing: -0.3,
   },
-  reservaData: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+  reservaTextCancelada: {
+    color: THEME.disabled,
+    textDecorationLine: 'line-through',
   },
-  reservaHorario: {
+  reservaDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
+  reservaDetail: {
     fontSize: 14,
+    color: THEME.text.secondary,
+    fontWeight: '500',
+  },
+  reservaHorarioDestaque: {
     color: THEME.primary,
-    marginTop: 2,
+    fontWeight: '700',
   },
   badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   badgeText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   moradorInfo: {
     flexDirection: 'row',
@@ -1274,13 +1539,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: '#f1f5f9',
+    gap: 8,
   },
   moradorText: {
     fontSize: 13,
-    color: '#666',
-    marginLeft: 8,
+    color: THEME.text.secondary,
     flex: 1,
+    fontWeight: '600',
   },
   cancelarBtn: {
     flexDirection: 'row',
@@ -1289,54 +1555,62 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: '#f1f5f9',
+    gap: 8,
   },
   cancelarBtnText: {
     color: THEME.error,
     fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: '700',
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 80,
+    gap: 12,
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: THEME.text.primary,
     marginTop: 16,
+    letterSpacing: -0.3,
   },
   emptyStateText: {
     fontSize: 14,
-    color: '#666',
+    color: THEME.text.tertiary,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 32,
+    fontWeight: '500',
   },
   filterContainer: {
     backgroundColor: '#fff',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: THEME.border,
   },
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f8fafc',
     borderRadius: 20,
     marginRight: 8,
+    borderWidth: 1.5,
+    borderColor: THEME.border,
   },
   filterChipSelected: {
     backgroundColor: THEME.primary,
+    borderColor: THEME.primary,
   },
   filterChipText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: '700',
+    color: THEME.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   filterChipTextSelected: {
     color: '#fff',
