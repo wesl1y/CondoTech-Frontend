@@ -769,19 +769,54 @@ export default function ReservasScreen() {
         {selectedArea && selectedDate && selectedTipo && (selectedTipo !== TipoReserva.HORA || horaInicio) && (
           <View style={styles.section}>
             <View style={styles.resumo}>
-              <Text style={styles.resumoTitle}>Resumo da Reserva</Text>
-              <Text style={styles.resumoItem}>📍 {selectedArea.nome}</Text>
-              <Text style={styles.resumoItem}>📅 {new Date(selectedDate).toLocaleDateString('pt-BR')}</Text>
-              <Text style={styles.resumoItem}>
-                ⏰{' '}
-                {selectedTipo === TipoReserva.HORA && horaInicio
-                  ? `${horaInicio} - ${calcularHoraFim(horaInicio, duracao)}`
-                  : TIPO_LABELS[selectedTipo]}
-              </Text>
-              {selectedArea.valorTaxa > 0 && (
-                <Text style={styles.resumoItem}>💰 R$ {selectedArea.valorTaxa.toFixed(2)}</Text>
-              )}
-            </View>
+            <Text style={styles.resumoTitle}>Resumo da Reserva</Text>
+
+            <View style={styles.resumoItemContainer}>
+              <MaterialCommunityIcons 
+                name="map-marker-outline" 
+                size={18} 
+                style={styles.resumoItemIcon} 
+              />{/* Quebra de linha removida */}
+              <Text style={styles.resumoItem}>{selectedArea.nome}</Text>
+            </View>
+
+            <View style={styles.resumoItemContainer}>
+              <MaterialCommunityIcons 
+                name="calendar-today" 
+                size={18} 
+                style={styles.resumoItemIcon} 
+              />{/* Quebra de linha removida */}
+              <Text style={styles.resumoItem}>
+                {new Date(`${selectedDate}T12:00:00`).toLocaleDateString('pt-BR')}
+              </Text>
+            </View>
+
+            <View style={styles.resumoItemContainer}>
+              <MaterialCommunityIcons 
+                name="clock-outline" 
+                size={18} 
+                style={styles.resumoItemIcon} 
+              />{/* Quebra de linha removida */}
+              <Text style={styles.resumoItem}>
+                {selectedTipo === TipoReserva.HORA && horaInicio
+                  ? `${horaInicio} - ${calcularHoraFim(horaInicio, duracao)}`
+                  : TIPO_LABELS[selectedTipo]}
+              </Text>
+            </View>
+
+            {selectedArea.valorTaxa > 0 && (
+              <View style={styles.resumoItemContainer}>
+                <MaterialCommunityIcons 
+                  name="currency-brl" 
+                  size={18} 
+                  style={styles.resumoItemIcon} 
+                />{/* Quebra de linha removida */}
+                <Text style={styles.resumoItem}>
+                  R$ {selectedArea.valorTaxa.toFixed(2)}
+                </Text>
+              </View>
+            )}
+          </View>
             <TouchableOpacity
               style={[styles.confirmarBtn, loadingCriar && styles.confirmarBtnDisabled]}
               onPress={handleCriarReserva}
@@ -1159,22 +1194,35 @@ const styles = StyleSheet.create({
     color: THEME.primary,
   },
   resumo: {
-    backgroundColor: '#F5F5F5',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  resumoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  resumoItem: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
+    backgroundColor: '#F5F5F5',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  resumoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+
+
+  resumoItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10, 
+  },
+ 
+
+  resumoItemIcon: {
+    color: THEME.primary, 
+    marginRight: 10, 
+  },
+
+  resumoItem: {
+    fontSize: 14,
+    color: '#666',
+  },
   confirmarBtn: {
     backgroundColor: THEME.primary,
     padding: 16,
