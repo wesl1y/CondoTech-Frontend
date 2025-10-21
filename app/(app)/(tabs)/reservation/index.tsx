@@ -429,18 +429,6 @@ area: AreaComum;
           )}
         </View>
 
-        <View style={styles.tiposContainer}>
-          {area.tiposReservaDisponiveis.slice(0, 2).map(tipo => (
-            <View key={tipo} style={styles.tipoTag}>
-              <Text style={styles.tipoTagText}>{TIPO_LABELS[tipo]}</Text>
-            </View>
-          ))}
-          {area.tiposReservaDisponiveis.length > 2 && (
-            <View style={styles.tipoTag}>
-              <Text style={styles.tipoTagText}>+{area.tiposReservaDisponiveis.length - 2}</Text>
-            </View>
-          )}
-        </View>
       </View>
 
       {/* Botão Ver detalhes fixo no bottom */}
@@ -1375,7 +1363,7 @@ const styles = StyleSheet.create({
   
   areaCard: {
     width: 160,
-    height: 180,
+    height: 160,
     backgroundColor: '#fff',
     borderRadius: 16,
     marginRight: 12,
