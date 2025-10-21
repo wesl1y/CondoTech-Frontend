@@ -12,7 +12,8 @@ import FotoGalleryModal from './FotoGalleryModal';
 const AreaDetailModal: React.FC<AreaDetailModalProps> = ({ 
   visible, 
   onClose, 
-  area, 
+  area,
+  mode = 'admin', // Padrão: modo admin com todos os botões
   onEdit, 
   onDelete, 
   onManageFotos 
@@ -21,6 +22,8 @@ const AreaDetailModal: React.FC<AreaDetailModalProps> = ({
   const [loadingImages, setLoadingImages] = useState(false);
   const [isGalleryVisible, setIsGalleryVisible] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+
+  const isViewMode = mode === 'view';
 
   useEffect(() => {
     const loadImages = async () => {
@@ -169,35 +172,37 @@ const AreaDetailModal: React.FC<AreaDetailModalProps> = ({
                 )}
               </ScrollView>
 
-              {/* Footer de ações */}
-              <View style={styles.detailActionsFooter}>
-                <TouchableOpacity 
-                  style={[styles.detailActionButton, styles.detailEditButton]} 
-                  onPress={() => { onClose(); onEdit(); }} 
-                  activeOpacity={0.7}
-                >
-                  <Edit size={16} color={COLORS.primary} />
-                  <Text style={[styles.detailActionButtonText, styles.detailEditButtonText]}>Editar</Text>
-                </TouchableOpacity>
+              {/* Footer de ações - Apenas no modo admin */}
+              {!isViewMode && (
+                <View style={styles.detailActionsFooter}>
+                  <TouchableOpacity 
+                    style={[styles.detailActionButton, styles.detailEditButton]} 
+                    onPress={() => { onClose(); onEdit?.(); }} 
+                    activeOpacity={0.7}
+                  >
+                    <Edit size={16} color={COLORS.primary} />
+                    <Text style={[styles.detailActionButtonText, styles.detailEditButtonText]}>Editar</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.detailActionButton, styles.detailFotoButton]} 
-                  onPress={onManageFotos} 
-                  activeOpacity={0.7}
-                >
-                  <ImageIcon size={16} color={COLORS.primary} />
-                  <Text style={[styles.detailActionButtonText, styles.detailFotoButtonText]}>Fotos</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.detailActionButton, styles.detailFotoButton]} 
+                    onPress={onManageFotos} 
+                    activeOpacity={0.7}
+                  >
+                    <ImageIcon size={16} color={COLORS.primary} />
+                    <Text style={[styles.detailActionButtonText, styles.detailFotoButtonText]}>Fotos</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.detailActionButton, styles.detailDeleteButton]} 
-                  onPress={() => { onClose(); onDelete(); }} 
-                  activeOpacity={0.7}
-                >
-                  <Trash2 size={16} color={COLORS.danger} />
-                  <Text style={[styles.detailActionButtonText, styles.detailDeleteButtonText]}>Excluir</Text>
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity 
+                    style={[styles.detailActionButton, styles.detailDeleteButton]} 
+                    onPress={() => { onClose(); onDelete?.(); }} 
+                    activeOpacity={0.7}
+                  >
+                    <Trash2 size={16} color={COLORS.danger} />
+                    <Text style={[styles.detailActionButtonText, styles.detailDeleteButtonText]}>Excluir</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </View>

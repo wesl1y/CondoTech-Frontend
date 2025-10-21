@@ -15,6 +15,7 @@ interface FotoAreaComum {
   urlBase64?: string;
   principal: boolean;
   ordem?: number;
+  nomeArquivo?: string;
 }
 
 interface AreaComum {
@@ -67,13 +68,15 @@ interface AreaFormModalProps {
   areaToEdit: AreaComum | null;
 }
 
+
 interface AreaDetailModalProps {
   visible: boolean;
   onClose: () => void;
   area: AreaComum | null;
-  onEdit: () => void;
-  onDelete: () => void;
-  onManageFotos: () => void;
+  mode?: 'admin' | 'view'; // 'admin' = botões de ação visíveis, 'view' = apenas visualização
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onManageFotos?: () => void;
 }
 
 interface RuleItemProps {
