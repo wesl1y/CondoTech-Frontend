@@ -7,8 +7,6 @@ import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text,
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import AreaDetailModal from '@/components/manage-areas/modals/AreaDetailModal';
 
-
-// Configuração do calendário para português
 LocaleConfig.locales['pt-br'] = {
   monthNames: [
     'Janeiro',
@@ -32,39 +30,39 @@ LocaleConfig.locales['pt-br'] = {
 LocaleConfig.defaultLocale = 'pt-br';
 
 // ============= TYPES & ENUMS =============
-enum TipoReserva {
-  HORA = "HORA",
-  MANHA = "MANHA",
-  TARDE = "TARDE",
-  NOITE = "NOITE",
-  DIA_TODO = "DIA_TODO"
+enum ReservationType {
+  HOUR = "HORA",
+  MORNING = "MANHA",
+  AFTERNOON = "TARDE",
+  EVENING = "NOITE",
+  FULL_DAY = "DIA_TODO"
 }
 
-enum StatusReserva {
-  PENDENTE = "PENDENTE",
-  CONFIRMADA = "CONFIRMADA",
-  CANCELADA = "CANCELADA",
-  FINALIZADA = "FINALIZADA"
+enum ReservationStatus {
+  PENDING = "PENDENTE",
+  CONFIRMED = "CONFIRMADA",
+  CANCELLED = "CANCELADA",
+  FINISHED = "FINALIZADA"
 }
 
-interface AreaComum {
+interface CommonArea {
   id: number;
   nome: string;
   descricao: string;
   icone: string;
   ativa: boolean;
   valorTaxa: number;
-  tiposReservaDisponiveis: TipoReserva[];
+  tiposReservaDisponiveis: ReservationType[];
 }
 
-interface Reserva {
+interface Reservation {
   id: number;
-  areaComum: AreaComum;
+  areaComum: CommonArea;
   dataReserva: string;
-  tipoReserva: TipoReserva;
+  tipoReserva: ReservationType;
   horaInicio?: string;
   horaFim?: string;
-  status: StatusReserva;
+  status: ReservationStatus;
   morador: {
     id: number;
     nome: string;
@@ -73,16 +71,16 @@ interface Reserva {
   };
 }
 
-// Tipo do backend
-interface ReservaBackend {
+// Backend type
+interface ReservationBackend {
   id: number;
   areaComumId: number;
   areaComumNome: string;
   dataReserva: string;
-  tipoReserva: TipoReserva;
+  tipoReserva: ReservationType;
   horaInicio?: string;
   horaFim?: string;
-  status: StatusReserva;
+  status: ReservationStatus;
   moradorId: number;
   moradorNome: string;
   moradorUnidade?: string;
@@ -115,28 +113,28 @@ const STATUS_COLORS = {
   FINALIZADA: '#6b7280',
 };
 
-const HORARIOS_FIXOS = {
+const FIXED_SCHEDULES = {
   MANHA: { inicio: '06:00', fim: '12:00' },
   TARDE: { inicio: '12:01', fim: '18:00' },
   NOITE: { inicio: '18:01', fim: '23:59' },
   DIA_TODO: { inicio: '06:00', fim: '23:59' }
 };
 
-const HORA_MINIMA = 6; // 06:00
-const HORA_MAXIMA = 23; // 23:00
-const MINUTO_MAXIMO = 59; // 23:59
+const MIN_HOUR = 6; // 06:00
+const MAX_HOUR = 23; // 23:00
+const MAX_MINUTE = 59; // 23:59
 
-const HORAS_INICIO = Array.from({ length: 17 }, (_, i) => {
-  const hora = i + 6;
-  return `${hora.toString().padStart(2, '0')}:00`;
+const START_HOURS = Array.from({ length: 17 }, (_, i) => {
+  const hour = i + 6;
+  return `${hour.toString().padStart(2, '0')}:00`;
 });
 
-const DURACOES = Array.from({ length: 17 }, (_, i) => ({
+const DURATIONS = Array.from({ length: 17 }, (_, i) => ({
   label: `${i + 1} hora${i > 0 ? 's' : ''}`,
   value: i + 1
 }));
 
-const TIPO_LABELS: Record<TipoReserva, string> = {
+const TYPE_LABELS: Record<ReservationType, string> = {
   HORA: 'Por Hora',
   MANHA: 'Manhã',
   TARDE: 'Tarde',
@@ -145,26 +143,26 @@ const TIPO_LABELS: Record<TipoReserva, string> = {
 };
 
 // ============= ADAPTERS =============
-const adaptarReservaBackend = (reservaBackend: ReservaBackend, areas: AreaComum[]): Reserva => {
-  // Extrai torre e unidade do nome do morador se existirem
-  let unidade = reservaBackend.moradorUnidade || 'N/A';
-  let torre = reservaBackend.moradorTorre || 'N/A';
-  let nomeMorador = reservaBackend.moradorNome;
+const adaptReservationFromBackend = (backendReservation: ReservationBackend, areas: CommonArea[]): Reservation => {
+  // Extract tower and unit from resident name if they exist
+  let unit = backendReservation.moradorUnidade || 'N/A';
+  let tower = backendReservation.moradorTorre || 'N/A';
+  let residentName = backendReservation.moradorNome;
 
-  // Tenta extrair torre e unidade do nome se não vieram separados
-  const matchTorre = nomeMorador.match(/Torre\s+(\w+)/i);
-  const matchUnidade = nomeMorador.match(/Unidade\s+(\w+)/i);
+  // Try to extract tower and unit from name if not separately provided
+  const towerMatch = residentName.match(/Torre\s+(\w+)/i);
+  const unitMatch = residentName.match(/Unidade\s+(\w+)/i);
   
-  if (matchTorre) torre = matchTorre[1];
-  if (matchUnidade) unidade = matchUnidade[1];
+  if (towerMatch) tower = towerMatch[1];
+  if (unitMatch) unit = unitMatch[1];
 
-  // Remove informações extras do nome
-  nomeMorador = nomeMorador.replace(/\s*\([^)]*\)\s*/g, '').trim();
+  // Remove extra information from name
+  residentName = residentName.replace(/\s*\([^)]*\)\s*/g, '').trim();
 
-  // Busca a área completa ou cria uma área mínima
-  const areaComum = areas.find(a => a.id === reservaBackend.areaComumId) || {
-    id: reservaBackend.areaComumId,
-    nome: reservaBackend.areaComumNome,
+  // Find complete area or create minimal area
+  const commonArea = areas.find(a => a.id === backendReservation.areaComumId) || {
+    id: backendReservation.areaComumId,
+    nome: backendReservation.areaComumNome,
     descricao: '',
     icone: 'home',
     ativa: true,
@@ -173,223 +171,248 @@ const adaptarReservaBackend = (reservaBackend: ReservaBackend, areas: AreaComum[
   };
 
   return {
-    id: reservaBackend.id,
-    areaComum,
-    dataReserva: reservaBackend.dataReserva,
-    tipoReserva: reservaBackend.tipoReserva,
-    horaInicio: reservaBackend.horaInicio,
-    horaFim: reservaBackend.horaFim,
-    status: reservaBackend.status,
+    id: backendReservation.id,
+    areaComum: commonArea,
+    dataReserva: backendReservation.dataReserva,
+    tipoReserva: backendReservation.tipoReserva,
+    horaInicio: backendReservation.horaInicio,
+    horaFim: backendReservation.horaFim,
+    status: backendReservation.status,
     morador: {
-      id: reservaBackend.moradorId,
-      nome: nomeMorador,
-      unidade,
-      torre
+      id: backendReservation.moradorId,
+      nome: residentName,
+      unidade: unit,
+      torre: tower
     }
   };
 };
+
 // ============= SERVICE LAYER =============
-const reservaService = {
-  getAreasComuns: async (): Promise<AreaComum[]> => {
+const reservationService = {
+  getCommonAreas: async (): Promise<CommonArea[]> => {
     try {
       const areas = await api.get('/reservas/areas');
       if (!Array.isArray(areas)) return [];
-      return areas.filter((a: AreaComum) => a?.ativa === true);
+      return areas.filter((a: CommonArea) => a?.ativa === true);
     } catch (error) {
-      console.error('Erro ao buscar áreas:', error);
+      console.error('Error fetching areas:', error);
       throw error;
     }
   },
 
-  getDisponibilidade: async (areaId: number, data: string): Promise<Reserva[]> => {
+  getAvailability: async (areaId: number, date: string): Promise<Reservation[]> => {
     try {
-      
-    const result = await api.get(`/reservas/areas/${areaId}/disponibilidade?data=${data}`);
-
+      const result = await api.get(`/reservas/areas/${areaId}/disponibilidade?data=${date}`);
       return result || [];
     } catch (error) {
-      console.error('Erro ao verificar disponibilidade:', error);
+      console.error('Error checking availability:', error);
       return [];
     }
   },
 
-  getMinhasReservas: async (areas: AreaComum[]): Promise<Reserva[]> => {
+  getMyReservations: async (areas: CommonArea[]): Promise<Reservation[]> => {
     try {
-      console.log('📥 Carregando minhas reservas...');
+      console.log('📥 Loading my reservations...');
       const result = await api.get('/reservas/minhas/futuras');
-      console.log('✅ Minhas reservas (backend):', result);
+      console.log('✅ My reservations (backend):', result);
       
       if (!Array.isArray(result)) return [];
       
-      const adaptadas = result.map((r: ReservaBackend) => adaptarReservaBackend(r, areas));
-      console.log('🔄 Reservas adaptadas:', adaptadas);
+      const adapted = result.map((r: ReservationBackend) => adaptReservationFromBackend(r, areas));
+      console.log('🔄 Adapted reservations:', adapted);
       
-      return adaptadas;
+      return adapted;
     } catch (error) {
-      console.error('❌ Erro ao buscar minhas reservas:', error);
+      console.error('❌ Error fetching my reservations:', error);
       throw error;
     }
   },
 
-  getTodasReservas: async (areas: AreaComum[]): Promise<Reserva[]> => {
+  getAllReservations: async (areas: CommonArea[]): Promise<Reservation[]> => {
     try {
-      console.log('📥 Carregando todas as reservas...');
-      // Corrigido: endpoint direto sem parâmetros errados
+      console.log('📥 Loading all reservations...');
       const result = await api.get('/reservas/todas');
-      console.log('✅ Todas reservas (backend):', result);
+      console.log('✅ All reservations (backend):', result);
       
       if (!Array.isArray(result)) return [];
       
-      const adaptadas = result.map((r: ReservaBackend) => adaptarReservaBackend(r, areas));
-      console.log('🔄 Todas reservas adaptadas:', adaptadas);
+      const adapted = result.map((r: ReservationBackend) => adaptReservationFromBackend(r, areas));
+      console.log('🔄 All adapted reservations:', adapted);
       
-      return adaptadas;
+      return adapted;
     } catch (error) {
-      console.error('❌ Erro ao buscar todas as reservas:', error);
+      console.error('❌ Error fetching all reservations:', error);
       throw error;
     }
   },
 
-  criarReserva: async (data: any): Promise<Reserva> => {
+  createReservation: async (data: any): Promise<Reservation> => {
     try {
       const result = await api.post('/reservas', data);
       return result;
     } catch (error) {
-      console.error('Erro ao criar reserva:', error);
+      console.error('Error creating reservation:', error);
       throw error;
     }
   },
 
-  cancelarReserva: async (id: number): Promise<void> => {
+  cancelReservation: async (id: number): Promise<void> => {
     try {
       await api.delete(`/reservas/${id}`);
     } catch (error) {
-      console.error('Erro ao cancelar reserva:', error);
+      console.error('Error cancelling reservation:', error);
       throw error;
     }
   }
 };
 
-// ============= UTILITY FUNCTIONS =============
-const podeCancelar = (reserva: Reserva, userRole: string, userId: string): boolean => {
-  if (userRole === 'ADMIN') return true;
-  if (reserva.status === 'CANCELADA') return false;
-  const dataReserva = new Date(reserva.dataReserva);
-  const hoje = new Date();
-  const diffHoras = (dataReserva.getTime() - hoje.getTime()) / (1000 * 60 * 60);
-  return diffHoras > 48 && reserva.morador.id.toString() === userId;
-};
-
-const calcularHoraFim = (horaInicio: string, duracao: number): string => {
-  const [hora, minuto] = horaInicio.split(':').map(Number);
-  const horaFim = hora + duracao;
-  return `${horaFim.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
-};
-
-const verificarConflitoHorario = (novoInicio: string, novoFim: string, reservas: Reserva[]): boolean => {
-  const [nInicioH, nInicioM] = novoInicio.split(':').map(Number);
-  const [nFimH, nFimM] = novoFim.split(':').map(Number);
-  const novoInicioMin = nInicioH * 60 + nInicioM;
-  const novoFimMin = nFimH * 60 + nFimM;
-
-  return reservas.some(r => {
-    if (r.status !== 'CONFIRMADA') return false;
-    const inicio = r.horaInicio || HORARIOS_FIXOS[r.tipoReserva as keyof typeof HORARIOS_FIXOS]?.inicio;
-    const fim = r.horaFim || HORARIOS_FIXOS[r.tipoReserva as keyof typeof HORARIOS_FIXOS]?.fim;
-    if (!inicio || !fim) return false;
-    const [rInicioH, rInicioM] = inicio.split(':').map(Number);
-    const [rFimH, rFimM] = fim.split(':').map(Number);
-    const rInicioMin = rInicioH * 60 + rInicioM;
-    const rFimMin = rFimH * 60 + rFimM;
-    return !(novoFimMin <= rInicioMin || novoInicioMin >= rFimMin);
-  });
-};
-// Verifica se uma hora específica está disponível como INÍCIO de reserva
-const isHoraDisponivel = (hora: string, reservas: Reserva[]): boolean => {
-  const [h, m] = hora.split(':').map(Number);
-  const horarioMin = h * 60 + m;
-  
-  // Filtra apenas reservas confirmadas
-  const reservasConfirmadas = reservas.filter(r => r.status === 'CONFIRMADA');
-  
-  return !reservasConfirmadas.some(r => {
-    const inicio = r.horaInicio || HORARIOS_FIXOS[r.tipoReserva as keyof typeof HORARIOS_FIXOS]?.inicio;
-    const fim = r.horaFim || HORARIOS_FIXOS[r.tipoReserva as keyof typeof HORARIOS_FIXOS]?.fim;
-    
-    if (!inicio || !fim) return false;
-    
-    const [rInicioH, rInicioM] = inicio.split(':').map(Number);
-    const [rFimH, rFimM] = fim.split(':').map(Number);
-    const rInicioMin = rInicioH * 60 + rInicioM;
-    const rFimMin = rFimH * 60 + rFimM;
-    
-    // O horário está indisponível se estiver DENTRO de uma reserva existente
-    return horarioMin >= rInicioMin && horarioMin < rFimMin;
-  });
-};
-
-// Calcula a duração máxima permitida considerando horário de funcionamento E próximas reservas
-const calcularDuracaoMaxima = (horaInicio: string, reservas: Reserva[]): number => {
-  const [horaInicioH] = horaInicio.split(':').map(Number);
-  
-  // Limite 1: Horário de funcionamento (até 23:00)
-  const limitePorHorario = HORA_MAXIMA - horaInicioH;
-  
-  // Filtra apenas reservas confirmadas
-  const reservasConfirmadas = reservas.filter(r => r.status === 'CONFIRMADA');
-  
-  // Se não há reservas, o limite é apenas o horário
-  if (reservasConfirmadas.length === 0) {
-    return Math.max(1, limitePorHorario);
+const canCancel = (reservation: Reservation, userRole: string, userId: string): { canCancel: boolean; reason?: string } => {
+  if (reservation.status === 'CANCELADA') {
+    return { canCancel: false, reason: 'Reserva já cancelada' };
   }
   
-  // Limite 2: Próxima reserva
-  let limitePorReserva = limitePorHorario;
-  const inicioMin = horaInicioH * 60;
+  // Adjust dates to compare only days (without time)
+  const reservationDate = new Date(reservation.dataReserva + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to compare only days
   
-  for (const r of reservasConfirmadas) {
-    const inicio = r.horaInicio || HORARIOS_FIXOS[r.tipoReserva as keyof typeof HORARIOS_FIXOS]?.inicio;
+  const diffHours = (reservationDate.getTime() - today.getTime()) / (1000 * 60 * 60);
+  
+  console.log('🔍 Checking cancellation:', {
+    reservationId: reservation.id,
+    reservationDate: reservation.dataReserva,
+    diffHours: diffHours,
+    userRole: userRole
+  });
+  
+  // Admin can always cancel
+  if (userRole === 'ADMIN') {
+    if (diffHours <= 48) {
+      return { canCancel: true, reason: 'ADMIN_OUT_OF_DEADLINE' };
+    }
+    return { canCancel: true };
+  }
+  
+  // Regular user can only cancel with MORE than 48 hours in advance
+  if (diffHours <= 48) {
+    return { canCancel: false, reason: 'Cancelamento só é permitido com mais de 48 horas de antecedência.\nPara mais informações, entre em contato com o seu síndico.' };
+  }
+  
+  return { canCancel: true };
+};
+
+const calculateEndTime = (startTime: string, duration: number): string => {
+  const [hour, minute] = startTime.split(':').map(Number);
+  const endHour = hour + duration;
+  return `${endHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+};
+
+const checkTimeConflict = (newStart: string, newEnd: string, reservations: Reservation[]): boolean => {
+  const [nStartH, nStartM] = newStart.split(':').map(Number);
+  const [nEndH, nEndM] = newEnd.split(':').map(Number);
+  const newStartMin = nStartH * 60 + nStartM;
+  const newEndMin = nEndH * 60 + nEndM;
+
+  return reservations.some(r => {
+    if (r.status !== 'CONFIRMADA') return false;
+    const start = r.horaInicio || FIXED_SCHEDULES[r.tipoReserva as keyof typeof FIXED_SCHEDULES]?.inicio;
+    const end = r.horaFim || FIXED_SCHEDULES[r.tipoReserva as keyof typeof FIXED_SCHEDULES]?.fim;
+    if (!start || !end) return false;
+    const [rStartH, rStartM] = start.split(':').map(Number);
+    const [rEndH, rEndM] = end.split(':').map(Number);
+    const rStartMin = rStartH * 60 + rStartM;
+    const rEndMin = rEndH * 60 + rEndM;
+    return !(newEndMin <= rStartMin || newStartMin >= rEndMin);
+  });
+};
+
+// Check if a specific hour is available as reservation START
+const isHourAvailable = (hour: string, reservations: Reservation[]): boolean => {
+  const [h, m] = hour.split(':').map(Number);
+  const timeMin = h * 60 + m;
+  
+  // Filter only confirmed reservations
+  const confirmedReservations = reservations.filter(r => r.status === 'CONFIRMADA');
+  
+  return !confirmedReservations.some(r => {
+    const start = r.horaInicio || FIXED_SCHEDULES[r.tipoReserva as keyof typeof FIXED_SCHEDULES]?.inicio;
+    const end = r.horaFim || FIXED_SCHEDULES[r.tipoReserva as keyof typeof FIXED_SCHEDULES]?.fim;
     
-    if (!inicio) continue;
+    if (!start || !end) return false;
     
-    const [rInicioH, rInicioM] = inicio.split(':').map(Number);
-    const rInicioMin = rInicioH * 60 + rInicioM;
+    const [rStartH, rStartM] = start.split(':').map(Number);
+    const [rEndH, rEndM] = end.split(':').map(Number);
+    const rStartMin = rStartH * 60 + rStartM;
+    const rEndMin = rEndH * 60 + rEndM;
     
-    // Se a reserva começa DEPOIS do horário desejado
-    if (rInicioMin > inicioMin) {
-      const minutosAteReserva = rInicioMin - inicioMin;
-      const horasAteReserva = Math.floor(minutosAteReserva / 60);
-      limitePorReserva = Math.min(limitePorReserva, horasAteReserva);
+    // Time is unavailable if it's INSIDE an existing reservation
+    return timeMin >= rStartMin && timeMin < rEndMin;
+  });
+};
+
+// Calculate maximum allowed duration considering operating hours AND next reservations
+const calculateMaxDuration = (startTime: string, reservations: Reservation[]): number => {
+  const [startHour] = startTime.split(':').map(Number);
+  
+  // Limit 1: Operating hours (until 23:00)
+  const limitBySchedule = MAX_HOUR - startHour;
+  
+  // Filter only confirmed reservations
+  const confirmedReservations = reservations.filter(r => r.status === 'CONFIRMADA');
+  
+  // If no reservations, limit is only the schedule
+  if (confirmedReservations.length === 0) {
+    return Math.max(1, limitBySchedule);
+  }
+  
+  // Limit 2: Next reservation
+  let limitByReservation = limitBySchedule;
+  const startMin = startHour * 60;
+  
+  for (const r of confirmedReservations) {
+    const start = r.horaInicio || FIXED_SCHEDULES[r.tipoReserva as keyof typeof FIXED_SCHEDULES]?.inicio;
+    
+    if (!start) continue;
+    
+    const [rStartH, rStartM] = start.split(':').map(Number);
+    const rStartMin = rStartH * 60 + rStartM;
+    
+    // If reservation starts AFTER desired time
+    if (rStartMin > startMin) {
+      const minutesUntilReservation = rStartMin - startMin;
+      const hoursUntilReservation = Math.floor(minutesUntilReservation / 60);
+      limitByReservation = Math.min(limitByReservation, hoursUntilReservation);
     }
   }
   
-  return Math.max(1, Math.min(limitePorHorario, limitePorReserva));
+  return Math.max(1, Math.min(limitBySchedule, limitByReservation));
 };
 
-// Verifica se a duração é válida
-const isDuracaoValida = (horaInicio: string, duracao: number, reservas: Reserva[]): boolean => {
-  const horaFim = calcularHoraFim(horaInicio, duracao);
-  const [horaFimH, horaFimM] = horaFim.split(':').map(Number);
+// Check if duration is valid
+const isDurationValid = (startTime: string, duration: number, reservations: Reservation[]): boolean => {
+  const endTime = calculateEndTime(startTime, duration);
+  const [endHour, endMin] = endTime.split(':').map(Number);
   
-  // Verifica se ultrapassa o horário máximo (23:59)
-  if (horaFimH > HORA_MAXIMA || (horaFimH === HORA_MAXIMA && horaFimM > MINUTO_MAXIMO)) {
+  // Check if exceeds maximum time (23:59)
+  if (endHour > MAX_HOUR || (endHour === MAX_HOUR && endMin > MAX_MINUTE)) {
     return false;
   }
   
-  // Verifica se não conflita com outras reservas
-  const reservasConfirmadas = reservas.filter(r => r.status === 'CONFIRMADA');
-  return !verificarConflitoHorario(horaInicio, horaFim, reservasConfirmadas);
+  // Check if doesn't conflict with other reservations
+  const confirmedReservations = reservations.filter(r => r.status === 'CONFIRMADA');
+  return !checkTimeConflict(startTime, endTime, confirmedReservations);
 };
+
 // ============= SHARED COMPONENTS =============
 
-const StatusBadge: React.FC<{ status: StatusReserva }> = ({ status }) => (
+const StatusBadge: React.FC<{ status: ReservationStatus }> = ({ status }) => (
   <View style={[styles.badge, { backgroundColor: STATUS_COLORS[status] }]}>
     <Text style={styles.badgeText}>{status}</Text>
   </View>
 );
 
 const AreaCard: React.FC<{
-area: AreaComum;
+  area: CommonArea;
   selected: boolean;
   onPress: () => void;
   onInfoPress: () => void;
@@ -410,44 +433,43 @@ area: AreaComum;
       </View>
       
       <View style={styles.areaContent}>
-        <Text style={styles.areaNome} numberOfLines={2} ellipsizeMode="tail">
+        <Text style={styles.areaName} numberOfLines={2} ellipsizeMode="tail">
           {area.nome}
         </Text>
 
-        {/* Sempre mostra o container de valor - agora é obrigatório */}
-        <View style={styles.valorContainer}>
+        {/* Always shows value container - now mandatory */}
+        <View style={styles.valueContainer}>
           {area.valorTaxa > 0 ? (
             <>
               <MaterialCommunityIcons name="currency-brl" size={12} color={THEME.success} />
-              <Text style={styles.areaValor}>{area.valorTaxa.toFixed(2)}</Text>
+              <Text style={styles.areaValue}>{area.valorTaxa.toFixed(2)}</Text>
             </>
           ) : (
             <>
               <MaterialCommunityIcons name="check-circle" size={12} color={THEME.success} />
-              <Text style={styles.areaValorGratis}>Grátis</Text>
+              <Text style={styles.areaValueFree}>Grátis</Text>
             </>
           )}
         </View>
-
       </View>
 
-      {/* Botão Ver detalhes fixo no bottom */}
+      {/* View details button fixed at bottom */}
       <TouchableOpacity
-        style={styles.verDetalhesBtn}
+        style={styles.viewDetailsBtn}
         onPress={(e) => {
           e.stopPropagation();
           onInfoPress();
         }}
         activeOpacity={0.7}
       >
-        <Text style={styles.verDetalhesBtnText}>Ver detalhes</Text>
+        <Text style={styles.viewDetailsBtnText}>Ver detalhes</Text>
         <MaterialCommunityIcons name="chevron-right" size={14} color={THEME.primary} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
 };
 
-const getIconName = (iconeName: string): string => {
+const getIconName = (iconName: string): string => {
   const validIcons: Record<string, string> = {
     'Salão de Festas': 'party-popper',
     'Piscina': 'swim',
@@ -458,158 +480,156 @@ const getIconName = (iconeName: string): string => {
     'Sauna': 'sauna',
     'Biblioteca': 'book-open',
   };
-  return validIcons[iconeName] || 'home';
+  return validIcons[iconName] || 'home';
 };
 
-const ReservaCard: React.FC<{
-  reserva: Reserva;
-  onCancelar: () => void;
-  showMorador?: boolean;
-  canCancel: boolean;
-}> = ({ reserva, onCancelar, showMorador = false, canCancel }) => {
-  if (!reserva || !reserva.areaComum) {
+const ReservationCard: React.FC<{
+  reservation: Reservation;
+  onCancel: () => void;
+  showResident?: boolean;
+  canCancelReservation: boolean;
+}> = ({ reservation, onCancel, showResident = false, canCancelReservation }) => {
+  if (!reservation || !reservation.areaComum) {
     return null;
   }
 
-  const iconName = getIconName(reserva.areaComum.icone);
-  const isCancelada = reserva.status === StatusReserva.CANCELADA;
-  const showCancelButton = canCancel && !isCancelada;
+  const iconName = getIconName(reservation.areaComum.icone);
+  const isCancelled = reservation.status === ReservationStatus.CANCELLED;
 
   return (
     <View style={[
-      styles.reservaCard,
-      isCancelada && styles.reservaCardCancelada
+      styles.reservationCard,
+      isCancelled && styles.reservationCardCancelled
     ]}>
-      <View style={styles.reservaHeader}>
-        <View style={styles.reservaIconContainer}>
+      <View style={styles.reservationHeader}>
+        <View style={styles.reservationIconContainer}>
           <MaterialCommunityIcons 
             name={iconName as any} 
             size={40} 
-            color={isCancelada ? THEME.disabled : THEME.primary} 
+            color={isCancelled ? THEME.disabled : THEME.primary} 
           />
         </View>
-        <View style={styles.reservaMainInfo}>
-          <View style={styles.reservaTopRow}>
+        <View style={styles.reservationMainInfo}>
+          <View style={styles.reservationTopRow}>
             <Text style={[
-              styles.reservaArea,
-              isCancelada && styles.reservaTextCancelada
+              styles.reservationArea,
+              isCancelled && styles.reservationTextCancelled
             ]}>
-              {reserva.areaComum.nome}
+              {reservation.areaComum.nome}
             </Text>
-            <StatusBadge status={reserva.status} />
+            <StatusBadge status={reservation.status} />
           </View>
           
-          <View style={styles.reservaDetailsRow}>
-            <MaterialCommunityIcons name="calendar" size={16} color={isCancelada ? THEME.disabled : '#666'} />
+          <View style={styles.reservationDetailsRow}>
+            <MaterialCommunityIcons name="calendar" size={16} color={isCancelled ? THEME.disabled : '#666'} />
             <Text style={[
-              styles.reservaDetail,
-              isCancelada && styles.reservaTextCancelada
+              styles.reservationDetail,
+              isCancelled && styles.reservationTextCancelled
             ]}>
-              {new Date(reserva.dataReserva).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+              {new Date(reservation.dataReserva).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
             </Text>
           </View>
 
-          <View style={styles.reservaDetailsRow}>
-            <MaterialCommunityIcons name="clock-outline" size={16} color={isCancelada ? THEME.disabled : THEME.primary} />
+          <View style={styles.reservationDetailsRow}>
+            <MaterialCommunityIcons name="clock-outline" size={16} color={isCancelled ? THEME.disabled : THEME.primary} />
             <Text style={[
-              styles.reservaDetail,
-              isCancelada && styles.reservaTextCancelada,
-              !isCancelada && styles.reservaHorarioDestaque
+              styles.reservationDetail,
+              isCancelled && styles.reservationTextCancelled,
+              !isCancelled && styles.reservationTimeHighlight
             ]}>
-              {reserva.tipoReserva === TipoReserva.HORA
-                ? `${reserva.horaInicio} - ${reserva.horaFim}`
-                : TIPO_LABELS[reserva.tipoReserva]}
+              {reservation.tipoReserva === ReservationType.HOUR
+                ? `${reservation.horaInicio} - ${reservation.horaFim}`
+                : TYPE_LABELS[reservation.tipoReserva]}
             </Text>
           </View>
         </View>
       </View>
 
-      {showMorador && reserva.morador && (
-        <View style={styles.moradorInfo}>
-          <MaterialCommunityIcons name="account" size={18} color={isCancelada ? THEME.disabled : '#666'} />
+      {showResident && reservation.morador && (
+        <View style={styles.residentInfo}>
+          <MaterialCommunityIcons name="account" size={18} color={isCancelled ? THEME.disabled : '#666'} />
           <Text style={[
-            styles.moradorText,
-            isCancelada && styles.reservaTextCancelada
+            styles.residentText,
+            isCancelled && styles.reservationTextCancelled
           ]}>
-            {reserva.morador.nome} - Torre {reserva.morador.torre}, Unidade {reserva.morador.unidade}
+            {reservation.morador.nome} - Torre {reservation.morador.torre}, Unidade {reservation.morador.unidade}
           </Text>
         </View>
       )}
-
-      {showCancelButton && (
-        <TouchableOpacity style={styles.cancelarBtn} onPress={onCancelar}>
-          <MaterialCommunityIcons name="close-circle" size={20} color={THEME.error} />
-          <Text style={styles.cancelarBtnText}>Cancelar Reserva</Text>
-        </TouchableOpacity>
-      )}
+      
+      <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
+        <MaterialCommunityIcons name="close-circle" size={20} color={THEME.error} />
+        <Text style={styles.cancelBtnText}>Cancelar Reserva</Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
 // ============= MAIN COMPONENT =============
-export default function ReservasScreen() {
+export default function ReservationsScreen() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   
-  const [activeTab, setActiveTab] = useState('Criar');
-  const tabs = isAdmin ? ['Criar', 'Minhas', 'Todas'] : ['Criar', 'Minhas'];
+  const [activeTab, setActiveTab] = useState('Create');
+  const tabs = isAdmin ? ['Create', 'Mine', 'All'] : ['Create', 'Mine'];
   const [refreshKey, setRefreshKey] = useState(0);
   
-  // Criar Tab
-  const [areas, setAreas] = useState<AreaComum[]>([]);
-  const [selectedArea, setSelectedArea] = useState<AreaComum | null>(null);
+  // Create Tab
+  const [areas, setAreas] = useState<CommonArea[]>([]);
+  const [selectedArea, setSelectedArea] = useState<CommonArea | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTipo, setSelectedTipo] = useState<TipoReserva | null>(null);
-  const [horaInicio, setHoraInicio] = useState('');
-  const [duracao, setDuracao] = useState(1);
-  const [disponibilidade, setDisponibilidade] = useState<Reserva[]>([]);
-  const [loadingCriar, setLoadingCriar] = useState(false);
+  const [selectedType, setSelectedType] = useState<ReservationType | null>(null);
+  const [startTime, setStartTime] = useState('');
+  const [duration, setDuration] = useState(1);
+  const [availability, setAvailability] = useState<Reservation[]>([]);
+  const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingAreas, setLoadingAreas] = useState(true);
   
-  // Minhas Reservas
-  const [minhasReservas, setMinhasReservas] = useState<Reserva[]>([]);
-  const [loadingMinhas, setLoadingMinhas] = useState(false);
-  const [refreshingMinhas, setRefreshingMinhas] = useState(false);
+  // My Reservations
+  const [myReservations, setMyReservations] = useState<Reservation[]>([]);
+  const [loadingMine, setLoadingMine] = useState(false);
+  const [refreshingMine, setRefreshingMine] = useState(false);
   
-  // Todas Reservas
-  const [todasReservas, setTodasReservas] = useState<Reserva[]>([]);
-  const [loadingTodas, setLoadingTodas] = useState(false);
-  const [refreshingTodas, setRefreshingTodas] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>('TODAS');
+  // All Reservations
+  const [allReservations, setAllReservations] = useState<Reservation[]>([]);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [refreshingAll, setRefreshingAll] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
   const [areaDetailModalVisible, setAreaDetailModalVisible] = useState(false);
-  const [selectedAreaForDetail, setSelectedAreaForDetail] = useState<AreaComum | null>(null);
+  const [selectedAreaForDetail, setSelectedAreaForDetail] = useState<CommonArea | null>(null);
 
-  const filteredReservas = useMemo(() => {
-    let filtered = [...todasReservas];
-    if (filterStatus !== 'TODAS') {
+  const filteredReservations = useMemo(() => {
+    let filtered = [...allReservations];
+    if (filterStatus !== 'ALL') {
       filtered = filtered.filter(r => r.status === filterStatus);
     }
     return filtered;
-  }, [todasReservas, filterStatus]);
-// Calcula durações válidas baseado na hora de início
-  const duracoesValidas = useMemo(() => {
-    if (!horaInicio) return DURACOES;
-    
-    const duracaoMaxima = calcularDuracaoMaxima(horaInicio, disponibilidade);
-    
-    return DURACOES.filter(d => {
-      if (d.value > duracaoMaxima) return false;
-      return isDuracaoValida(horaInicio, d.value, disponibilidade);
-    });
-  }, [horaInicio, disponibilidade]);
+  }, [allReservations, filterStatus]);
 
-    const handleShowAreaDetail = (area: AreaComum) => {
-      setSelectedAreaForDetail(area);
-      setAreaDetailModalVisible(true);
-   };
+  // Calculate valid durations based on start time
+  const validDurations = useMemo(() => {
+    if (!startTime) return DURATIONS;
+    
+    const maxDuration = calculateMaxDuration(startTime, availability);
+    
+    return DURATIONS.filter(d => {
+      if (d.value > maxDuration) return false;
+      return isDurationValid(startTime, d.value, availability);
+    });
+  }, [startTime, availability]);
+
+  const handleShowAreaDetail = (area: CommonArea) => {
+    setSelectedAreaForDetail(area);
+    setAreaDetailModalVisible(true);
+  };
 
   // ============= EFFECTS =============
   
-  // Atualiza áreas ao focar na tela
+  // Update areas when focusing on screen
   useFocusEffect(
     useCallback(() => {
-      console.log('🔄 Tela focada, recarregando áreas...');
+      console.log('🔄 Screen focused, reloading areas...');
       loadAreasData();
     }, [])
   );
@@ -617,14 +637,14 @@ export default function ReservasScreen() {
   const loadAreasData = async () => {
     try {
       setLoadingAreas(true);
-      const data = await reservaService.getAreasComuns();
-      console.log('✅ Áreas carregadas:', data);
+      const data = await reservationService.getCommonAreas();
+      console.log('✅ Areas loaded:', data);
       setAreas(data);
       if (data.length === 0) {
         Alert.alert('Aviso', 'Nenhuma área comum ativa disponível.', [{ text: 'OK' }]);
       }
     } catch (error: any) {
-      console.error('❌ Erro ao carregar áreas:', error);
+      console.error('❌ Error loading areas:', error);
       Alert.alert('Erro', error.message || 'Erro ao carregar áreas.', [
         { text: 'Tentar Novamente', onPress: loadAreasData },
         { text: 'Cancelar', style: 'cancel' }
@@ -637,176 +657,176 @@ export default function ReservasScreen() {
   useEffect(() => {
     const loadTabData = async () => {
       try {
-        if (activeTab === 'Minhas') {
-          setLoadingMinhas(true);
-          const data = await reservaService.getMinhasReservas(areas);
-          setMinhasReservas(data);
-          setLoadingMinhas(false);
-        } else if (activeTab === 'Todas' && isAdmin) {
-          setLoadingTodas(true);
-          const data = await reservaService.getTodasReservas(areas);
-          setTodasReservas(data);
-          setLoadingTodas(false);
+        if (activeTab === 'Mine') {
+          setLoadingMine(true);
+          const data = await reservationService.getMyReservations(areas);
+          setMyReservations(data);
+          setLoadingMine(false);
+        } else if (activeTab === 'All' && isAdmin) {
+          setLoadingAll(true);
+          const data = await reservationService.getAllReservations(areas);
+          setAllReservations(data);
+          setLoadingAll(false);
         }
       } catch (error: any) {
-        console.error('❌ Erro ao carregar dados da tab:', error);
+        console.error('❌ Error loading tab data:', error);
         Alert.alert('Erro', 'Não foi possível carregar os dados');
-        setLoadingMinhas(false);
-        setLoadingTodas(false);
+        setLoadingMine(false);
+        setLoadingAll(false);
       } finally {
-        setRefreshingMinhas(false);
-        setRefreshingTodas(false);
+        setRefreshingMine(false);
+        setRefreshingAll(false);
       }
     };
     
-    // Só carrega se houver áreas disponíveis
+    // Only load if areas are available
     if (areas.length > 0) {
       loadTabData();
     }
   }, [activeTab, refreshKey, isAdmin, areas]);
 
-  // Reseta duração quando hora de início muda
+  // Reset duration when start time changes
   useEffect(() => {
-    if (horaInicio && duracoesValidas.length > 0) {
-      // Se a duração atual não é válida, seleciona a primeira válida
-      if (!duracoesValidas.find(d => d.value === duracao)) {
-        setDuracao(duracoesValidas[0].value);
+    if (startTime && validDurations.length > 0) {
+      // If current duration is not valid, select first valid one
+      if (!validDurations.find(d => d.value === duration)) {
+        setDuration(validDurations[0].value);
       }
     }
-  }, [horaInicio, duracoesValidas]);
+  }, [startTime, validDurations]);
 
   // ============= HANDLERS =============
   
-  const handleSelectArea = (area: AreaComum) => {
+  const handleSelectArea = (area: CommonArea) => {
     setSelectedArea(area);
     setSelectedDate('');
-    setSelectedTipo(null);
-    setDisponibilidade([]);
+    setSelectedType(null);
+    setAvailability([]);
   };
 
   const handleSelectDate = useCallback(async (date: string) => {
     setSelectedDate(date);
-    setSelectedTipo(null);
-    setHoraInicio('');
-    setDuracao(1);
+    setSelectedType(null);
+    setStartTime('');
+    setDuration(1);
     if (selectedArea) {
       try {
-        const reservas = await reservaService.getDisponibilidade(selectedArea.id, date);
-        setDisponibilidade(reservas);
+        const reservations = await reservationService.getAvailability(selectedArea.id, date);
+        setAvailability(reservations);
       } catch (error) {
-        console.error('Erro:', error);
-        setDisponibilidade([]);
+        console.error('Error:', error);
+        setAvailability([]);
       }
     }
   }, [selectedArea]);
 
-  const isPeriodoDisponivel = (tipo: TipoReserva): boolean => {
-      const reservasConfirmadas = disponibilidade.filter(r => r.status === 'CONFIRMADA');
+  const isPeriodAvailable = (type: ReservationType): boolean => {
+    const confirmedReservations = availability.filter(r => r.status === 'CONFIRMADA');
 
-      // REGRA 1: Se "DIA_TODO" já está reservado, NADA MAIS (incluindo "DIA_TODO") está disponível.
-      const diaTodoReservado = reservasConfirmadas.some(
-        r => r.tipoReserva === TipoReserva.DIA_TODO
+    // RULE 1: If "FULL_DAY" is already reserved, NOTHING ELSE (including "FULL_DAY") is available
+    const fullDayReserved = confirmedReservations.some(
+      r => r.tipoReserva === ReservationType.FULL_DAY
+    );
+    if (fullDayReserved) {
+      return false; // Blocks HOUR, MORNING, AFTERNOON, EVENING and FULL_DAY itself
+    }
+
+    // RULE 2: If we're trying to select "FULL_DAY",
+    // it's only available if there are NO other reservations (of any type)
+    if (type === ReservationType.FULL_DAY) {
+      return confirmedReservations.length === 0;
+    }
+
+    // RULE 3: If we're trying to select a fixed period (MORNING, AFTERNOON, EVENING),
+    // it's unavailable if there's ANY conflict (either HOUR, or the period itself)
+    if (
+      type === ReservationType.MORNING ||
+      type === ReservationType.AFTERNOON ||
+      type === ReservationType.EVENING
+    ) {
+      const { inicio, fim } = FIXED_SCHEDULES[type];
+      // The 'checkTimeConflict' function checks if the period (e.g.: 06:00-12:00)
+      // conflicts with ANY existing reservation in the 'confirmedReservations' list
+      if (checkTimeConflict(inicio, fim, confirmedReservations)) {
+        return false; // There's conflict, period is not available
+      }
+    }
+
+    // RULE 4: If we're trying to select "HOUR"
+    // "HOUR" selection is blocked if all fixed periods are already taken
+    if (type === ReservationType.HOUR) {
+      const morningReserved = checkTimeConflict(
+        FIXED_SCHEDULES.MANHA.inicio,
+        FIXED_SCHEDULES.MANHA.fim,
+        confirmedReservations
       );
-      if (diaTodoReservado) {
-        return false; // Bloqueia HORA, MANHA, TARDE, NOITE e o próprio DIA_TODO
+      const afternoonReserved = checkTimeConflict(
+        FIXED_SCHEDULES.TARDE.inicio,
+        FIXED_SCHEDULES.TARDE.fim,
+        confirmedReservations
+      );
+      const eveningReserved = checkTimeConflict(
+        FIXED_SCHEDULES.NOITE.inicio,
+        FIXED_SCHEDULES.NOITE.fim,
+        confirmedReservations
+      );
+      
+      // If all 3 fixed periods are unavailable, there's no space for HOUR
+      if (morningReserved && afternoonReserved && eveningReserved) {
+        return false;
       }
+    }
 
-      // REGRA 2: Se estamos tentando selecionar "DIA_TODO",
-      // ele só está disponível se NÃO HOUVER NENHUMA outra reserva (de qualquer tipo).
-      if (tipo === TipoReserva.DIA_TODO) {
-        return reservasConfirmadas.length === 0;
-      }
+    // If passed all blocking rules, the period is available
+    return true;
+  };
 
-      // REGRA 3: Se estamos tentando selecionar um período fixo (MANHA, TARDE, NOITE),
-      // ele fica indisponível se houver QUALQUER conflito (seja HORA, ou o próprio período).
-      if (
-        tipo === TipoReserva.MANHA ||
-        tipo === TipoReserva.TARDE ||
-        tipo === TipoReserva.NOITE
-      ) {
-        const { inicio, fim } = HORARIOS_FIXOS[tipo];
-        // A função 'verificarConflitoHorario' checa se o período (ex: 06:00-12:00)
-        // conflita com QUALQUER reserva existente na lista 'reservasConfirmadas'.
-        if (verificarConflitoHorario(inicio, fim, reservasConfirmadas)) {
-          return false; // Há conflito, o período não está disponível
-        }
-      }
-
-      // REGRA 4: Se estamos tentando selecionar "HORA".
-      // A seleção "HORA" é bloqueada se todos os períodos fixos já estiverem tomados.
-      if (tipo === TipoReserva.HORA) {
-        const manhaReservada = verificarConflitoHorario(
-          HORARIOS_FIXOS.MANHA.inicio,
-          HORARIOS_FIXOS.MANHA.fim,
-          reservasConfirmadas
-        );
-        const tardeReservada = verificarConflitoHorario(
-          HORARIOS_FIXOS.TARDE.inicio,
-          HORARIOS_FIXOS.TARDE.fim,
-          reservasConfirmadas
-        );
-        const noiteReservada = verificarConflitoHorario(
-          HORARIOS_FIXOS.NOITE.inicio,
-          HORARIOS_FIXOS.NOITE.fim,
-          reservasConfirmadas
-        );
-        
-        // Se todos os 3 períodos fixos estão indisponíveis, não há espaço para HORA.
-        if (manhaReservada && tardeReservada && noiteReservada) {
-          return false;
-        }
-      }
-
-      // Se passou por todas as regras de bloqueio, o período está disponível.
-      return true;
-    };
-
-  const handleCriarReserva = async () => {
-    if (!selectedArea || !selectedDate || !selectedTipo) {
+  const handleCreateReservation = async () => {
+    if (!selectedArea || !selectedDate || !selectedType) {
       Alert.alert('Atenção', 'Preencha todos os campos');
       return;
     }
-    if (selectedTipo === TipoReserva.HORA && !horaInicio) {
+    if (selectedType === ReservationType.HOUR && !startTime) {
       Alert.alert('Atenção', 'Selecione o horário de início');
       return;
     }
     try {
-      setLoadingCriar(true);
+      setLoadingCreate(true);
       const payload: any = {
         areaComumId: selectedArea.id,
         dataReserva: selectedDate,
-        tipoReserva: selectedTipo,
+        tipoReserva: selectedType,
       };
-      if (selectedTipo === TipoReserva.HORA) {
-        payload.horaInicio = horaInicio;
-        payload.horaFim = calcularHoraFim(horaInicio, duracao);
+      if (selectedType === ReservationType.HOUR) {
+        payload.horaInicio = startTime;
+        payload.horaFim = calculateEndTime(startTime, duration);
         
-        // Verifica se ultrapassa o horário máximo
-        const [horaFimH, horaFimM] = payload.horaFim.split(':').map(Number);
-        if (horaFimH > HORA_MAXIMA || (horaFimH === HORA_MAXIMA && horaFimM > MINUTO_MAXIMO)) {
+        // Check if exceeds maximum time
+        const [endHour, endMin] = payload.horaFim.split(':').map(Number);
+        if (endHour > MAX_HOUR || (endHour === MAX_HOUR && endMin > MAX_MINUTE)) {
           Alert.alert('Horário Inválido', 'A reserva não pode ultrapassar às 23:59');
-          setLoadingCriar(false);
+          setLoadingCreate(false);
           return;
         }
         
-        if (verificarConflitoHorario(payload.horaInicio, payload.horaFim, disponibilidade)) {
+        if (checkTimeConflict(payload.horaInicio, payload.horaFim, availability)) {
           Alert.alert('Conflito', 'Este horário já está reservado');
-          setLoadingCriar(false);
+          setLoadingCreate(false);
           return;
         }
       }
-      await reservaService.criarReserva(payload);
+      await reservationService.createReservation(payload);
       Alert.alert('Sucesso!', 'Reserva criada com sucesso', [
         {
           text: 'OK',
           onPress: () => {
             setSelectedArea(null);
             setSelectedDate('');
-            setSelectedTipo(null);
-            setHoraInicio('');
-            setDuracao(1);
+            setSelectedType(null);
+            setStartTime('');
+            setDuration(1);
             setRefreshKey(prev => prev + 1);
-            // Recarrega as áreas para atualizar a lista
+            // Reload areas to update list
             loadAreasData();
           }
         }
@@ -814,36 +834,67 @@ export default function ReservasScreen() {
     } catch (error: any) {
       Alert.alert('Erro', error.message || 'Não foi possível criar a reserva');
     } finally {
-      setLoadingCriar(false);
+      setLoadingCreate(false);
     }
   };
 
-  const handleCancelarMinhas = async (reserva: Reserva) => {
-    Alert.alert('Cancelar Reserva', 'Tem certeza que deseja cancelar esta reserva?', [
-      { text: 'Não', style: 'cancel' },
-      {
-        text: 'Sim',
-        onPress: async () => {
-          try {
-            await reservaService.cancelarReserva(reserva.id);
-            Alert.alert('Sucesso', 'Reserva cancelada');
-            setRefreshKey(prev => prev + 1);
-          } catch (error: any) {
-            Alert.alert('Erro', error.message || 'Não foi possível cancelar');
+  const handleCancelMine = async (reservation: Reservation) => {
+    const verification = canCancel(reservation, user?.role || 'USER', user?.id || '');
+    
+    if (!verification.canCancel) {
+      Alert.alert('Não é possível cancelar', verification.reason || 'Não foi possível cancelar esta reserva');
+      return;
+    }
+    
+    const hasFee = reservation.areaComum.valorTaxa > 0;
+    const refundMessage = hasFee 
+      ? `\n\nValor pago: R$ ${reservation.areaComum.valorTaxa.toFixed(2)}\nVocê será reembolsado em até 7 dias úteis.` 
+      : '';
+    
+    Alert.alert(
+      'Cancelar Reserva', 
+      `Tem certeza que deseja cancelar esta reserva?${refundMessage}`, 
+      [
+        { text: 'Não', style: 'cancel' },
+        {
+          text: 'Sim, Cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await reservationService.cancelReservation(reservation.id);
+              Alert.alert('Sucesso', hasFee ? 'Reserva cancelada! O reembolso será processado em até 7 dias úteis.' : 'Reserva cancelada com sucesso!');
+              setRefreshKey(prev => prev + 1);
+            } catch (error: any) {
+              Alert.alert('Erro', error.message || 'Não foi possível cancelar');
+            }
           }
         }
-      }
-    ]);
+      ]
+    );
   };
 
-  const handleCancelarTodas = async (reserva: Reserva) => {
-    Alert.alert('Cancelar Reserva', `Cancelar reserva de ${reserva.morador.nome}?`, [
+  const handleCancelAll = async (reservation: Reservation) => {
+    const verification = canCancel(reservation, user?.role || 'ADMIN', user?.id || '');
+    
+    const hasFee = reservation.areaComum.valorTaxa > 0;
+    let message = `Cancelar reserva de ${reservation.morador.nome}?`;
+    
+    if (verification.reason === 'ADMIN_OUT_OF_DEADLINE') {
+      message += '\n\nATENÇÃO: Esta reserva está dentro do prazo de 48 horas!';
+    }
+    
+    if (hasFee) {
+      message += `\n\nValor: R$ ${reservation.areaComum.valorTaxa.toFixed(2)}\nO morador será reembolsado.`;
+    }
+    
+    Alert.alert('Cancelar Reserva', message, [
       { text: 'Não', style: 'cancel' },
       {
-        text: 'Sim',
+        text: 'Sim, Cancelar',
+        style: 'destructive',
         onPress: async () => {
           try {
-            await reservaService.cancelarReserva(reserva.id);
+            await reservationService.cancelReservation(reservation.id);
             Alert.alert('Sucesso', 'Reserva cancelada');
             setRefreshKey(prev => prev + 1);
           } catch (error: any) {
@@ -856,7 +907,7 @@ export default function ReservasScreen() {
 
   // ============= RENDER TAB CONTENT =============
   
-  const renderCriarTab = () => {
+  const renderCreateTab = () => {
     const today = new Date().toISOString().split('T')[0];
     const maxDate = new Date();
     maxDate.setDate(maxDate.getDate() + 30);
@@ -888,7 +939,7 @@ export default function ReservasScreen() {
             <Text style={styles.sectionTitle}>1. Selecione a Área</Text>
             
             <TouchableOpacity 
-            style={styles.infoButton}
+              style={styles.infoButton}
               onPress={() => {
                 Alert.alert(
                   'Informação', 
@@ -901,11 +952,10 @@ export default function ReservasScreen() {
                 name="information-outline" 
                 size={20} 
                 color={THEME.primary}
-                
               />
             </TouchableOpacity>
           </View>
-         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {areas.map(area => (
               <AreaCard
                 key={area.id}
@@ -940,30 +990,30 @@ export default function ReservasScreen() {
         {selectedArea && selectedDate && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>3. Selecione o Período</Text>
-            <View style={styles.tiposGrid}>
-              {selectedArea.tiposReservaDisponiveis.map(tipo => {
-                const disponivel = isPeriodoDisponivel(tipo);
+            <View style={styles.typesGrid}>
+              {selectedArea.tiposReservaDisponiveis.map(type => {
+                const available = isPeriodAvailable(type);
                 return (
                   <TouchableOpacity
-                    key={tipo}
+                    key={type}
                     style={[
-                      styles.tipoChip,
-                      selectedTipo === tipo && styles.tipoChipSelected,
-                      !disponivel && styles.tipoChipDisabled
+                      styles.typeChip,
+                      selectedType === type && styles.typeChipSelected,
+                      !available && styles.typeChipDisabled
                     ]}
-                    onPress={() => disponivel && setSelectedTipo(tipo)}
-                    disabled={!disponivel}
+                    onPress={() => available && setSelectedType(type)}
+                    disabled={!available}
                   >
                     <Text
                       style={[
-                        styles.tipoChipText,
-                        selectedTipo === tipo && styles.tipoChipTextSelected,
-                        !disponivel && styles.tipoChipTextDisabled
+                        styles.typeChipText,
+                        selectedType === type && styles.typeChipTextSelected,
+                        !available && styles.typeChipTextDisabled
                       ]}
                     >
-                      {TIPO_LABELS[tipo]}
+                      {TYPE_LABELS[type]}
                     </Text>
-                    {!disponivel && <Text style={styles.indisponivelText}>Indisponível</Text>}
+                    {!available && <Text style={styles.unavailableText}>Indisponível</Text>}
                   </TouchableOpacity>
                 );
               })}
@@ -971,50 +1021,50 @@ export default function ReservasScreen() {
           </View>
         )}
 
-        {selectedTipo === TipoReserva.HORA && (
+        {selectedType === ReservationType.HOUR && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>4. Horário e Duração</Text>
             <Text style={styles.label}>Horário de Início</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horaScroll}>
-              {HORAS_INICIO.map(hora => {
-                const disponivel = isHoraDisponivel(hora, disponibilidade);
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScroll}>
+              {START_HOURS.map(hour => {
+                const available = isHourAvailable(hour, availability);
                 return (
                   <TouchableOpacity
-                    key={hora}
+                    key={hour}
                     style={[
-                      styles.horaChip, 
-                      horaInicio === hora && styles.horaChipSelected,
-                      !disponivel && styles.horaChipDisabled
+                      styles.timeChip, 
+                      startTime === hour && styles.timeChipSelected,
+                      !available && styles.timeChipDisabled
                     ]}
-                    onPress={() => disponivel && setHoraInicio(hora)}
-                    disabled={!disponivel}
+                    onPress={() => available && setStartTime(hour)}
+                    disabled={!available}
                   >
                     <Text style={[
-                      styles.horaChipText, 
-                      horaInicio === hora && styles.horaChipTextSelected,
-                      !disponivel && styles.horaChipTextDisabled
+                      styles.timeChipText, 
+                      startTime === hour && styles.timeChipTextSelected,
+                      !available && styles.timeChipTextDisabled
                     ]}>
-                      {hora}
+                      {hour}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
             
-            {horaInicio && (
+            {startTime && (
               <>
                 <Text style={styles.label}>Duração</Text>
-                {duracoesValidas.length === 0 ? (
-                  <Text style={styles.avisoText}>Nenhuma duração disponível para este horário</Text>
+                {validDurations.length === 0 ? (
+                  <Text style={styles.warningText}>Nenhuma duração disponível para este horário</Text>
                 ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horaScroll}>
-                    {duracoesValidas.map(d => (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScroll}>
+                    {validDurations.map(d => (
                       <TouchableOpacity
                         key={d.value}
-                        style={[styles.horaChip, duracao === d.value && styles.horaChipSelected]}
-                        onPress={() => setDuracao(d.value)}
+                        style={[styles.timeChip, duration === d.value && styles.timeChipSelected]}
+                        onPress={() => setDuration(d.value)}
                       >
-                        <Text style={[styles.horaChipText, duracao === d.value && styles.horaChipTextSelected]}>
+                        <Text style={[styles.timeChipText, duration === d.value && styles.timeChipTextSelected]}>
                           {d.label}
                         </Text>
                       </TouchableOpacity>
@@ -1026,48 +1076,57 @@ export default function ReservasScreen() {
           </View>
         )}
 
-        {selectedArea && selectedDate && selectedTipo && (selectedTipo !== TipoReserva.HORA || (horaInicio && duracoesValidas.length > 0)) && (
+        {selectedArea && selectedDate && selectedType && (selectedType !== ReservationType.HOUR || (startTime && validDurations.length > 0)) && (
           <View style={styles.section}>
-            <View style={styles.resumo}>
-              <Text style={styles.resumoTitle}>Resumo da Reserva</Text>
+            <View style={styles.summary}>
+              <Text style={styles.summaryTitle}>Resumo da Reserva</Text>
 
-              <View style={styles.resumoItemContainer}>
+              <View style={styles.summaryItemContainer}>
                 <MaterialCommunityIcons name="map-marker-outline" size={18} color={THEME.primary} />
-                <Text style={styles.resumoItem}>{selectedArea.nome}</Text>
+                <Text style={styles.summaryItem}>{selectedArea.nome}</Text>
               </View>
 
-              <View style={styles.resumoItemContainer}>
+              <View style={styles.summaryItemContainer}>
                 <MaterialCommunityIcons name="calendar-today" size={18} color={THEME.primary} />
-                <Text style={styles.resumoItem}>
+                <Text style={styles.summaryItem}>
                   {new Date(`${selectedDate}T12:00:00`).toLocaleDateString('pt-BR')}
                 </Text>
               </View>
 
-              <View style={styles.resumoItemContainer}>
+              <View style={styles.summaryItemContainer}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color={THEME.primary} />
-                <Text style={styles.resumoItem}>
-                  {selectedTipo === TipoReserva.HORA && horaInicio
-                    ? `${horaInicio} - ${calcularHoraFim(horaInicio, duracao)}`
-                    : TIPO_LABELS[selectedTipo]}
+                <Text style={styles.summaryItem}>
+                  {selectedType === ReservationType.HOUR && startTime
+                    ? `${startTime} - ${calculateEndTime(startTime, duration)}`
+                    : TYPE_LABELS[selectedType]}
                 </Text>
               </View>
 
               {selectedArea.valorTaxa > 0 && (
-                <View style={styles.resumoItemContainer}>
+                <View style={styles.summaryItemContainer}>
                   <MaterialCommunityIcons name="currency-brl" size={18} color={THEME.primary} />
-                  <Text style={styles.resumoItem}>R$ {selectedArea.valorTaxa.toFixed(2)}</Text>
+                  <Text style={styles.summaryItem}>R$ {selectedArea.valorTaxa.toFixed(2)}</Text>
+                </View>
+              )}
+
+              {selectedArea.valorTaxa > 0 && (
+                <View style={styles.warningContainer}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={20} color={THEME.warning} />
+                  <Text style={styles.warningText}>
+                    Cancelamentos só são permitidos com 48 horas de antecedência.{'\n'}Reembolso em até 7 dias úteis.
+                  </Text>
                 </View>
               )}
             </View>
             <TouchableOpacity
-              style={[styles.confirmarBtn, loadingCriar && styles.confirmarBtnDisabled]}
-              onPress={handleCriarReserva}
-              disabled={loadingCriar}
+              style={[styles.confirmBtn, loadingCreate && styles.confirmBtnDisabled]}
+              onPress={handleCreateReservation}
+              disabled={loadingCreate}
             >
-              {loadingCriar ? (
+              {loadingCreate ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.confirmarBtnText}>Confirmar Reserva</Text>
+                <Text style={styles.confirmBtnText}>Confirmar Reserva</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1076,8 +1135,8 @@ export default function ReservasScreen() {
     );
   };
 
-  const renderMinhasTab = () => {
-    if (loadingMinhas) {
+  const renderMineTab = () => {
+    if (loadingMine) {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={THEME.primary} />
@@ -1085,24 +1144,28 @@ export default function ReservasScreen() {
         </View>
       );
     }
-    if (minhasReservas.length === 0) {
+    if (myReservations.length === 0) {
       return (
         <ScrollView
           style={styles.tabContent}
+          contentContainerStyle={{ flexGrow: 1 }}
           refreshControl={
             <RefreshControl
-              refreshing={refreshingMinhas}
+              refreshing={refreshingMine}
               onRefresh={() => {
-                setRefreshingMinhas(true);
+                setRefreshingMine(true);
                 setRefreshKey(prev => prev + 1);
               }}
+              tintColor={THEME.primary}
             />
           }
         >
           <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="calendar-blank" size={80} color={THEME.disabled} />
+            <View style={styles.emptyIconContainer}>
+              <MaterialCommunityIcons name="calendar-blank" size={72} color={THEME.primary} />
+            </View>
             <Text style={styles.emptyStateTitle}>Nenhuma reserva</Text>
-            <Text style={styles.emptyStateText}>Você ainda não possui reservas futuras</Text>
+            <Text style={styles.emptyStateText}>Você ainda não possui reservas futuras.{'\n'}Crie uma nova reserva na aba "Criar"</Text>
           </View>
         </ScrollView>
       );
@@ -1110,30 +1173,33 @@ export default function ReservasScreen() {
     return (
       <ScrollView
         style={styles.tabContent}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 20 }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshingMinhas}
+            refreshing={refreshingMine}
             onRefresh={() => {
-              setRefreshingMinhas(true);
+              setRefreshingMine(true);
               setRefreshKey(prev => prev + 1);
             }}
+            tintColor={THEME.primary}
           />
         }
       >
-        {minhasReservas.map(reserva => (
-          <ReservaCard
-            key={reserva.id}
-            reserva={reserva}
-            onCancelar={() => handleCancelarMinhas(reserva)}
-            canCancel={podeCancelar(reserva, user?.role || 'USER', user?.id || '')}
+        {myReservations.map(reservation => (
+          <ReservationCard
+            key={reservation.id}
+            reservation={reservation}
+            onCancel={() => handleCancelMine(reservation)}
+            canCancelReservation={canCancel(reservation, user?.role || 'USER', user?.id || '').canCancel}
           />
         ))}
       </ScrollView>
     );
   };
 
-  const renderTodasTab = () => {
-    if (loadingTodas) {
+  const renderAllTab = () => {
+    if (loadingAll) {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={THEME.primary} />
@@ -1145,11 +1211,12 @@ export default function ReservasScreen() {
       <View style={styles.tabContent}>
         <View style={styles.filterContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {['TODAS', 'PENDENTE', 'CONFIRMADA', 'CANCELADA'].map(status => (
+            {['ALL', 'PENDENTE', 'CONFIRMADA', 'CANCELADA'].map(status => (
               <TouchableOpacity
                 key={status}
                 style={[styles.filterChip, filterStatus === status && styles.filterChipSelected]}
                 onPress={() => setFilterStatus(status)}
+                activeOpacity={0.7}
               >
                 <Text
                   style={[
@@ -1157,36 +1224,46 @@ export default function ReservasScreen() {
                     filterStatus === status && styles.filterChipTextSelected
                   ]}
                 >
-                  {status}
+                  {status === 'ALL' ? 'Todas' : status.charAt(0) + status.slice(1).toLowerCase()}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
         <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 10 }}
           refreshControl={
             <RefreshControl
-              refreshing={refreshingTodas}
+              refreshing={refreshingAll}
               onRefresh={() => {
-                setRefreshingTodas(true);
+                setRefreshingAll(true);
                 setRefreshKey(prev => prev + 1);
               }}
+              tintColor={THEME.primary}
             />
           }
         >
-          {filteredReservas.length === 0 ? (
+          {filteredReservations.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="filter-off" size={80} color={THEME.disabled} />
+              <View style={styles.emptyIconContainer}>
+                <MaterialCommunityIcons name="filter-off" size={72} color={THEME.primary} />
+              </View>
               <Text style={styles.emptyStateTitle}>Nenhuma reserva encontrada</Text>
+              <Text style={styles.emptyStateText}>
+                {filterStatus === 'ALL' 
+                  ? 'Não há reservas cadastradas no sistema' 
+                  : `Não há reservas com status "${filterStatus}"`}
+              </Text>
             </View>
           ) : (
-            filteredReservas.map(reserva => (
-              <ReservaCard
-                key={reserva.id}
-                reserva={reserva}
-                onCancelar={() => handleCancelarTodas(reserva)}
-                showMorador
-                canCancel={isAdmin}
+            filteredReservations.map(reservation => (
+              <ReservationCard
+                key={reservation.id}
+                reservation={reservation}
+                onCancel={() => handleCancelAll(reservation)}
+                showResident
+                canCancelReservation={isAdmin}
               />
             ))
           )}
@@ -1219,9 +1296,9 @@ export default function ReservasScreen() {
             >
               <MaterialCommunityIcons
                 name={
-                  tab === 'Criar'
+                  tab === 'Create'
                     ? 'plus-circle'
-                    : tab === 'Minhas'
+                    : tab === 'Mine'
                     ? 'calendar-account'
                     : 'calendar-multiple'
                 }
@@ -1229,16 +1306,17 @@ export default function ReservasScreen() {
                 color={activeTab === tab ? THEME.primary : '#666'}
               />
               <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                {tab}
+                {tab === 'Create' ? 'Criar' : tab === 'Mine' ? 'Minhas' : 'Todas'}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {activeTab === 'Criar' && renderCriarTab()}
-      {activeTab === 'Minhas' && renderMinhasTab()}
-      {activeTab === 'Todas' && isAdmin && renderTodasTab()}
+      {activeTab === 'Create' && renderCreateTab()}
+      {activeTab === 'Mine' && renderMineTab()}
+      {activeTab === 'All' && isAdmin && renderAllTab()}
+      
       <AreaDetailModal
         visible={areaDetailModalVisible}
         onClose={() => {
@@ -1248,15 +1326,13 @@ export default function ReservasScreen() {
         area={selectedAreaForDetail}
         mode="view"
       />
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  infoButton:{
-    marginTop:4
-
+  infoButton: {
+    marginTop: 4
   },
   container: {
     flex: 1,
@@ -1346,13 +1422,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 8,
   },
-  
   titleContainer: { 
     flexDirection: 'row',     
     alignItems: 'center',    
     gap: 6,                 
     marginBottom: 12,        
-    
   },
   sectionTitle: {
     fontSize: 18,
@@ -1360,7 +1434,6 @@ const styles = StyleSheet.create({
     color: THEME.text.primary,
     letterSpacing: -0.3,
   },
-  
   areaCard: {
     width: 160,
     height: 160,
@@ -1394,7 +1467,7 @@ const styles = StyleSheet.create({
     flex: 1, 
     padding: 10, 
   },
-  areaNome: {
+  areaName: {
     fontSize: 13,
     fontWeight: '700',
     color: THEME.text.primary,
@@ -1403,7 +1476,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     height: 34, 
   },
-  valorContainer: {
+  valueContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1417,37 +1490,17 @@ const styles = StyleSheet.create({
     minWidth: 60,
     marginBottom: 2,
   },
-  areaValor: {
+  areaValue: {
     fontSize: 11,
     color: THEME.success,
     fontWeight: '800',
   },
-  areaValorGratis: {
+  areaValueFree: {
     fontSize: 11,
     color: THEME.success,
     fontWeight: '800',
   },
-  tiposContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 4,
-    height: 30,
-  },
-  tipoTag: {
-    backgroundColor: '#eff6ff', 
-    paddingHorizontal: 8, // Mais espaço horizontal
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  tipoTagText: {
-    fontSize: 9,
-    color: THEME.primary, 
-    fontWeight: '600',
-    textTransform: 'capitalize',
-    letterSpacing: 0.2,
-  },
-  verDetalhesBtn: {
+  viewDetailsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1456,19 +1509,19 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: '#f8fafc', 
   },
-  verDetalhesBtnText: {
+  viewDetailsBtnText: {
     fontSize: 11,
     fontWeight: '700',
     color: THEME.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  tiposGrid: {
+  typesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  tipoChip: {
+  typeChip: {
     flex: 1,
     minWidth: '45%',
     padding: 16,
@@ -1483,28 +1536,28 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  tipoChipSelected: {
+  typeChipSelected: {
     borderColor: THEME.primary,
     backgroundColor: '#eff6ff',
   },
-  tipoChipDisabled: {
+  typeChipDisabled: {
     backgroundColor: '#f8fafc',
     borderColor: '#cbd5e1',
     opacity: 0.6,
   },
-  tipoChipText: {
+  typeChipText: {
     fontSize: 14,
     fontWeight: '600',
     color: THEME.text.primary,
   },
-  tipoChipTextSelected: {
+  typeChipTextSelected: {
     color: THEME.primary,
     fontWeight: '700',
   },
-  tipoChipTextDisabled: {
+  typeChipTextDisabled: {
     color: THEME.disabled,
   },
-  indisponivelText: {
+  unavailableText: {
     fontSize: 10,
     color: THEME.error,
     marginTop: 4,
@@ -1519,10 +1572,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  horaScroll: {
+  timeScroll: {
     marginBottom: 8,
   },
-  horaChip: {
+  timeChip: {
     paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: '#fff',
@@ -1536,35 +1589,28 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  horaChipSelected: {
+  timeChipSelected: {
     borderColor: THEME.primary,
     backgroundColor: '#eff6ff',
   },
-  horaChipDisabled: {
+  timeChipDisabled: {
     backgroundColor: '#f8fafc',
     borderColor: '#cbd5e1',
     opacity: 0.5,
   },
-  horaChipText: {
+  timeChipText: {
     fontSize: 14,
     fontWeight: '600',
     color: THEME.text.primary,
   },
-  horaChipTextSelected: {
+  timeChipTextSelected: {
     color: THEME.primary,
     fontWeight: '700',
   },
-  horaChipTextDisabled: {
+  timeChipTextDisabled: {
     color: THEME.disabled,
   },
-  avisoText: {
-    fontSize: 14,
-    color: THEME.error,
-    fontStyle: 'italic',
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  resumo: {
+  summary: {
     backgroundColor: '#f8fafc',
     padding: 16,
     borderRadius: 12,
@@ -1572,26 +1618,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.border,
   },
-  resumoTitle: {
+  summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: THEME.text.primary,
     marginBottom: 12,
     letterSpacing: -0.3,
   },
-  resumoItemContainer: {
+  summaryItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  resumoItem: {
+  summaryItem: {
     fontSize: 14,
     color: THEME.text.secondary,
     marginLeft: 8,
     flex: 1,
     fontWeight: '500',
   },
-  confirmarBtn: {
+  confirmBtn: {
     backgroundColor: THEME.primary,
     padding: 16,
     borderRadius: 12,
@@ -1603,187 +1649,246 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  confirmarBtnDisabled: {
+  confirmBtnDisabled: {
     backgroundColor: THEME.disabled,
     shadowOpacity: 0,
     elevation: 0,
   },
-  confirmarBtnText: {
+  confirmBtnText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-  reservaCard: {
+  reservationCard: {
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 20,
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  reservationCardCancelled: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+    opacity: 0.75,
+  },
+  reservationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginBottom: 16,
+  },
+  reservationIconContainer: {
+    backgroundColor: '#eff6ff',
+    padding: 14,
     borderRadius: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: THEME.primary,
-    shadowColor: '#000',
+    shadowColor: THEME.primary,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 2,
   },
-  reservaCardCancelada: {
-    backgroundColor: '#fafafa',
-    opacity: 0.8,
-    borderLeftColor: THEME.disabled,
+  reservationMainInfo: {
+    flex: 1,
+    gap: 8,
   },
-  reservaHeader: {
+  reservationTopRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  reservaIconContainer: {
+  reservationArea: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: THEME.text.primary,
+    flex: 1,
+    marginRight: 12,
+    letterSpacing: -0.5,
+    lineHeight: 24,
+  },
+  reservationTextCancelled: {
+    color: '#94a3b8',
+    textDecorationLine: 'line-through',
+  },
+  reservationDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#f8fafc',
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  reservationDetail: {
+    fontSize: 14,
+    color: THEME.text.secondary,
+    fontWeight: '600',
+    flex: 1,
+  },
+  reservationTimeHighlight: {
+    color: THEME.primary,
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  reservaMainInfo: {
-    flex: 1,
-  },
-  reservaTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-    gap: 8,
-  },
-  reservaArea: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: THEME.text.primary,
-    flex: 1,
-    marginRight: 8,
-    letterSpacing: -0.3,
-  },
-  reservaTextCancelada: {
-    color: THEME.disabled,
-    textDecorationLine: 'line-through',
-  },
-  reservaDetailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 6,
-  },
-  reservaDetail: {
-    fontSize: 14,
-    color: THEME.text.secondary,
-    fontWeight: '500',
-  },
-  reservaHorarioDestaque: {
-    color: THEME.primary,
-    fontWeight: '700',
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   badgeText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
-  moradorInfo: {
+  residentInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-    gap: 8,
+    backgroundColor: '#f8fafc',
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    gap: 10,
   },
-  moradorText: {
-    fontSize: 13,
+  residentText: {
+    fontSize: 14,
     color: THEME.text.secondary,
     flex: 1,
-    fontWeight: '600',
+    fontWeight: '700',
+    lineHeight: 20,
   },
-  cancelarBtn: {
+  cancelBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    marginTop: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#fecaca',
     gap: 8,
   },
-  cancelarBtnText: {
+  cancelBtnText: {
     color: THEME.error,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 80,
-    gap: 12,
+    paddingVertical: 100,
+    paddingHorizontal: 32,
+    gap: 8,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: THEME.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
   },
   emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: THEME.text.primary,
-    marginTop: 16,
-    letterSpacing: -0.3,
+    marginTop: 20,
+    letterSpacing: -0.5,
+    textAlign: 'center',
   },
   emptyStateText: {
-    fontSize: 14,
+    fontSize: 15,
     color: THEME.text.tertiary,
     marginTop: 8,
     textAlign: 'center',
-    paddingHorizontal: 32,
-    fontWeight: '500',
+    lineHeight: 22,
+    fontWeight: '600',
   },
   filterContainer: {
     backgroundColor: '#fff',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: THEME.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     backgroundColor: '#f8fafc',
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1.5,
-    borderColor: THEME.border,
+    borderRadius: 24,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   filterChipSelected: {
     backgroundColor: THEME.primary,
     borderColor: THEME.primary,
+    shadowColor: THEME.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   filterChipText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: THEME.text.tertiary,
+    fontWeight: '800',
+    color: THEME.text.secondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   filterChipTextSelected: {
     color: '#fff',
   },
-  infoLinkText: {
-    color: THEME.primary,
-    fontSize: 13,
-    fontWeight: '700',
-    marginRight: 4,
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fffbeb',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.warning,
+    gap: 10,
   },
-
+  warningText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400e',
+    fontWeight: '600',
+    lineHeight: 18,
+  },
 });
