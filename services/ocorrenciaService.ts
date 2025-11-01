@@ -1,150 +1,124 @@
-import api from './api';
-import { API_URL } from '../constants/api';
-import * as SecureStore from 'expo-secure-store';
+import api from './api'; // Seu wrapper fetch
 
-const TOKEN_KEY = 'my-jwt';
-
+// Interface alinhada com a IssueDTO do backend
+// (Renomeei para Ocorrencia para manter a consistência do seu código)
 export interface Ocorrencia {
-    id?: number;
-    moradorId: number;
-    moradorNome?: string;
-    tipoOcorrencia: string;
-    titulo: string;
-    descricao: string;
-    statusOcorrencia: string;
-    respostaSindico?: string;
-    imageUrl?: string;
-    createdAt?: string;
-    dataResolucao?: string;
-    updatedAt?: string;
+    id?: number;
+    residentId?: number;
+    residentName?: string;
+    issueTypeId?: number;
+    issueTypeName?: string;
+    title: string;
+    description: string;
+    issueStatus: string; // ex: 'OPEN', 'IN_PROGRESS'
+    imageUrl?: string;
+    createdAt?: string;
+    resolutionDate?: string;
+    updatedAt?: string;
 }
 
-export interface PaginatedResponse {
-    ocorrencias: Ocorrencia[];
-    currentPage: number;
-    totalItems: number;
-    totalPages: number;
-    hasMore: boolean;
+// Interface para a resposta da paginação do backend
+export interface OcorrenciaResponse {
+    issues: Ocorrencia[]; // O backend retorna 'issues'
+    currentPage: number;
+    totalItems: number;
+    totalPages: number;
+    hasMore: boolean;
 }
 
-const handleFetchResponse = async (response: Response) => {
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.message || `Erro: ${response.status}`;
-        throw new Error(errorMessage);
-    }
-    if (response.status === 204 || response.headers.get("Content-Length") === "0") {
-        return null;
-    }
-    return response.json();
+class OcorrenciaService {
+
+    /**
+     * Busca paginada de ocorrências (Admin)
+     */
+    async search(
+        query: string, 
+        status?: string, 
+        tipo?: string, 
+        page: number = 0, 
+        size: number = 10
+    ): Promise<OcorrenciaResponse> {
+        const params = { query, status, tipo, page, size };
+        // 'api.get' já usa 'buildQueryString' internamente
+        return api.get('/issues/search', params);
+    }
+
+    /**
+     * Busca paginada de ocorrências (Morador)
+     */
+    async searchByMorador(
+        moradorId: number,
+        query: string, 
+        status?: string, 
+        tipo?: string, 
+        page: number = 0, 
+        size: number = 10
+    ): Promise<OcorrenciaResponse> {
+        const params = { query, status, tipo, page, size };
+        return api.get(`/issues/morador/${moradorId}/search`, params);
+    }
+
+    /**
+     * Cria uma nova ocorrência (com ou sem imagem)
+     * @param issueData Objeto da ocorrência (sem id)
+     * @param image Asset do Expo ImagePicker (opcional)
+     */
+    async create(issueData: Partial<Ocorrencia>, image: any): Promise<Ocorrencia> {
+        const formData = new FormData();
+        
+        // 1. Adiciona o JSON da ocorrência
+        // O backend espera uma @RequestPart("issue")
+        formData.append('issue', JSON.stringify(issueData));
+
+        // 2. Adiciona a imagem, se existir
+        // O backend espera uma @RequestPart("image")
+        if (image) {
+            const fileType = image.uri.split('.').pop();
+            const mimeType = image.type ? `${image.type}/${fileType}` : `image/${fileType || 'jpeg'}`;
+            
+            formData.append('image', {
+                uri: image.uri,
+                name: image.fileName || `photo.${fileType}`,
+                type: mimeType,
+            } as any);
+        }
+        
+        // Usa o método 'postFormData' do seu api.ts
+        return api.postFormData('/issues', formData);
+    }
+
+    /**
+     * Atualiza uma ocorrência (com ou sem imagem)
+     * @param id ID da ocorrência
+     * @param issueData Objeto da ocorrência
+     * @param image Asset do Expo ImagePicker (opcional, se for trocar)
+     */
+    async update(id: number, issueData: Ocorrencia, image?: any): Promise<Ocorrencia> {
+        const formData = new FormData();
+        formData.append('issue', JSON.stringify(issueData));
+
+        if (image) {
+            const fileType = image.uri.split('.').pop();
+            const mimeType = image.type ? `${image.type}/${fileType}` : `image/${fileType || 'jpeg'}`;
+            formData.append('image', {
+                uri: image.uri,
+                name: image.fileName || `photo.${fileType}`,
+                type: mimeType,
+            } as any);
+        }
+
+        // Usa o novo método 'putFormData'
+        return api.putFormData(`/issues/${id}`, formData);
+    }
+    
+    /**
+     * Cancela uma ocorrência
+     */
+    async cancel(id: number): Promise<void> {
+        // O endpoint @PutMapping("/{id}/cancel") não espera body,
+        // mas o 'api.put' envia um. Enviar um body vazio {} é inofensivo.
+        return api.put(`/issues/${id}/cancel`, {});
+    }
 }
 
-export const ocorrenciaService = {
-   
-    // ✅ MÉTODO ÚNICO PARA ADMIN - busca universal
-    async search(
-        query: string = '', 
-        status?: string, 
-        tipo?: string, 
-        page: number = 0, 
-        size: number = 10
-    ): Promise<PaginatedResponse> {
-        let url = `/ocorrencias/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`;
-        if (status) url += `&status=${status}`;
-        if (tipo) url += `&tipo=${encodeURIComponent(tipo)}`;
-        return api.get(url);
-    },
-
-    // ✅ MÉTODO ÚNICO PARA MORADOR - busca universal
-    async searchByMorador(
-        moradorId: number,
-        query: string = '',
-        status?: string,
-        tipo?: string,
-        page: number = 0,
-        size: number = 10
-    ): Promise<PaginatedResponse> {
-        let url = `/ocorrencias/morador/${moradorId}/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`;
-        if (status) url += `&status=${status}`;
-        if (tipo) url += `&tipo=${encodeURIComponent(tipo)}`;
-        return api.get(url);
-    },
-
-    async getById(id: number): Promise<Ocorrencia> {
-        return api.get(`/ocorrencias/${id}`);
-    },
-
-    async create(ocorrencia: Ocorrencia, image?: any): Promise<Ocorrencia> {
-        const formData = new FormData();
-        
-        const { id, moradorNome, imageUrl, createdAt, dataResolucao, updatedAt, ...ocorrenciaData } = ocorrencia;
-        
-        formData.append('ocorrencia', JSON.stringify(ocorrenciaData));
-
-        if (image && image.uri) {
-            const uriParts = image.uri.split('.');
-            const fileType = uriParts[uriParts.length - 1];
-            
-            formData.append('image', {
-                uri: image.uri,
-                name: `photo.${fileType}`,
-                type: `image/${fileType}`,
-            } as any);
-        }
-
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
-        
-        const response = await fetch(`${API_URL}/ocorrencias`, {
-            method: 'POST',
-            headers: {
-                ...(token && { Authorization: `Bearer ${token}` }),
-            },
-            body: formData,
-        });
-
-        return handleFetchResponse(response);
-    },
-
-    async update(id: number, ocorrencia: Ocorrencia, image?: any): Promise<Ocorrencia> {
-        const formData = new FormData();
-        
-        formData.append('ocorrencia', JSON.stringify(ocorrencia));
-
-        if (image && image.uri) {
-            const uriParts = image.uri.split('.');
-            const fileType = uriParts[uriParts.length - 1];
-            
-            formData.append('image', {
-                uri: image.uri,
-                name: `photo.${fileType}`,
-                type: `image/${fileType}`,
-            } as any);
-        }
-
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
-        
-        const response = await fetch(`${API_URL}/ocorrencias/${id}`, {
-            method: 'PUT',
-            headers: {
-                ...(token && { Authorization: `Bearer ${token}` }),
-            },
-            body: formData,
-        });
-        
-        return handleFetchResponse(response);
-    },
-
-    async cancel(id: number): Promise<void> {
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
-
-        const response = await fetch(`${API_URL}/ocorrencias/${id}/cancelar`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { Authorization: `Bearer ${token}` }),
-            },
-        });
-        
-        await handleFetchResponse(response);
-    },
-};
+export const ocorrenciaService = new OcorrenciaService();

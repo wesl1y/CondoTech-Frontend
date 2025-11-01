@@ -1,18 +1,20 @@
-// src/app/(tabs)/issues/components/IssueCard.tsx
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Ocorrencia } from '@/services/ocorrenciaService';
 import { AlertTriangle, CheckCircle2, Clock, ImageIcon, XCircle } from 'lucide-react-native';
-import React from 'react';
+// 1. Importe o 'memo' do React
+import React, { memo } from 'react'; 
 import { Text, TouchableOpacity, View } from 'react-native';
 import { styles } from '../../styles/issues/_styles';
 import { statusMap } from './issues.constants';
+
 
 interface IssueCardProps {
     issue: Ocorrencia;
     onPress: () => void;
 }
 
+// --- Funções Auxiliares (sem mudanças) ---
 const getStatusIcon = (status: string) => {
     switch (status) {
         case 'Resolvida': return <CheckCircle2 size={22} color="#16a34a" />;
@@ -48,9 +50,13 @@ const formatDate = (dateString?: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
 };
+// --- Fim das Funções Auxiliares ---
 
-export const IssueCard = ({ issue, onPress }: IssueCardProps) => {
-    const displayStatus = statusMap[issue.statusOcorrencia] || issue.statusOcorrencia;
+
+// 2. Renomeie seu componente para "IssueCardComponent" (ou qualquer nome)
+const IssueCardComponent = ({ issue, onPress }: IssueCardProps) => {
+    // Usa 'issueStatus' (inglês) e traduz com 'statusMap'
+    const displayStatus = statusMap[issue.issueStatus] || issue.issueStatus;
 
     return (
         <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
@@ -62,23 +68,28 @@ export const IssueCard = ({ issue, onPress }: IssueCardProps) => {
                     <View style={styles.issueCardBody}>
                         <View style={styles.issueCardHeader}>
                             <Text style={styles.issueTitle} numberOfLines={1}>
-                                {issue.titulo}
+                                {issue.title}
                             </Text>
                             <Badge
                                 variant={getStatusBadgeVariant(displayStatus) as any}
                                 style={styles.statusBadge}
                             >
-                                <Text>{displayStatus}</Text>
+                                <Text style={styles.statusBadgeText}>{displayStatus}</Text>
                             </Badge>
                         </View>
-                        <Text style={styles.issueType}>{issue.tipoOcorrencia}</Text>
+                        
+                        {/* Usa 'issueTypeName' vindo da DTO */}
+                        <Text style={styles.issueType}>{issue.issueTypeName}</Text>
+                        
                         <Text style={styles.issueDescription} numberOfLines={2}>
-                            {issue.descricao}
+                            {issue.description}
                         </Text>
                         <View style={styles.issueMetaContainer}>
+                            {/* Usa 'residentName' vindo da DTO */}
                             <Text style={styles.issueMeta}>
-                                {issue.moradorNome || 'Morador'}
+                                {issue.residentName || 'Morador'}
                             </Text>
+                            
                             <View style={styles.metaRight}>
                                 {issue.imageUrl && (
                                     <View style={styles.imageIndicator}>
@@ -94,3 +105,6 @@ export const IssueCard = ({ issue, onPress }: IssueCardProps) => {
         </TouchableOpacity>
     );
 };
+
+// 3. Exporte a versão memoizada do componente
+export const IssueCard = memo(IssueCardComponent);

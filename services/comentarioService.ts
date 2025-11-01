@@ -1,25 +1,32 @@
-import api from './api';
+import api from './api'; // Seu wrapper fetch
 
 export interface Comentario {
-    id?: number;
-    ocorrenciaId: number;
-    moradorId: number;
-    texto: string;
-    isAdmin?: boolean;
-    moradorNome?: string;
-    createdAt?: string;
+    id?: number;
+    ocorrenciaId: number;
+    moradorId: number;
+    moradorNome?: string;
+    texto: string;
+    createdAt?: string;
+    isAdmin?: boolean;
 }
 
-export const comentarioService = {
-    async getByOcorrencia(ocorrenciaId: number): Promise<Comentario[]> {
-        return api.get(`/comentarios/ocorrencia/${ocorrenciaId}`);
-    },
+class ComentarioService {
+    /**
+     * Busca comentários por ID da ocorrência
+     * (Assumindo o endpoint, ajuste se necessário)
+     */
+    async getByOcorrencia(ocorrenciaId: number): Promise<Comentario[]> {
+        // Assumindo que você tenha um endpoint GET /comentarios/ocorrencia/{id}
+        return api.get(`/comentarios/ocorrencia/${ocorrenciaId}`);
+    }
 
-    async create(comentario: Comentario): Promise<Comentario> {
-        return api.post('/comentarios', comentario);
-    },
+    /**
+     * Cria um novo comentário
+     */
+    async create(comentario: Comentario): Promise<Comentario> {
+        // Assumindo que você tenha um endpoint POST /comentarios
+        return api.post('/comentarios', comentario);
+    }
+}
 
-    async delete(id: number): Promise<void> {
-        return api.delete(`/comentarios/${id}`);
-    },
-};
+export const comentarioService = new ComentarioService();

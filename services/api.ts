@@ -188,6 +188,28 @@ const api = {
     });
     return handleResponse(response);
   },
+
+  /**
+   * Realiza upload de arquivo com FormData (multipart/form-data) usando PUT.
+   * @param endpoint O endpoint da API
+   * @param formData O FormData com os arquivos e dados
+   */
+  putFormData: async (endpoint: string, formData: FormData) => {
+    const token = await getAuthToken();
+    const headers: Record<string, string> = {
+      ...(token && { Authorization: `Bearer ${token}` }),
+      // 'Content-Type': 'multipart/form-data' é definido automaticamente pelo fetch ao usar FormData
+    };
+    
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'PUT', // A única mudança é aqui
+      headers,
+      body: formData,
+    });
+    return handleResponse(response);
+  },
 };
+
+
 
 export default api;

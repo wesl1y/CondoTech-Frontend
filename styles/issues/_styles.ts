@@ -291,6 +291,35 @@ export const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 8,
     },
+    statusBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    // Variantes do Badge para status
+    badgeSuccess: {
+        backgroundColor: '#16a34a',
+    },
+    badgeSuccessText: {
+        color: '#fff',
+    },
+    badgeWarning: {
+        backgroundColor: '#ca8a04',
+    },
+    badgeWarningText: {
+        color: '#fff',
+    },
+    badgeDanger: {
+        backgroundColor: '#dc2626',
+    },
+    badgeDangerText: {
+        color: '#fff',
+    },
+    badgeDefault: {
+        backgroundColor: '#6b7280',
+    },
+    badgeDefaultText: {
+        color: '#fff',
+    },
     issueType: {
         fontSize: 12,
         color: '#64748b',
@@ -337,6 +366,41 @@ export const styles = StyleSheet.create({
     },
     
     // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16,
+    },
+    modalContainer: {
+        width: '100%',
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9',
+        backgroundColor: '#fff',
+    },
+    modalHeaderTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#0f172a',
+    },
+    modalCloseButton: {
+        padding: 4,
+    },
     modalScrollView: {
         marginVertical: 8,
     },
